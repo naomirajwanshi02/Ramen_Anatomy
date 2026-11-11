@@ -1,0 +1,15 @@
+/* Anatomy "sepia" theme.
+   Anatomy ships dark and light (vendor/anatomy/iso.css). This adds a third set
+   of the same --anatomy-* tokens in warm paper and walnut ink, so every kit
+   class (iso-fill, iso-shade, iso-top, iso-line, plates) renders in sepia. */
+.iso[data-theme="sepia"]{
+  --anatomy-page:#ecdfc6;--anatomy-card:#f6eddb;--anatomy-text:#5b4630;--anatomy-strong:#2b1e13;--anatomy-muted:#8f7a5e;
+  --anatomy-paper:#f6eddb;--anatomy-face:#fbf5e8;--anatomy-top:#fdf8ee;
+  --anatomy-shade-0:#d2bd98;--anatomy-shade-1:#ddcaa8;--anatomy-shade-2:#e7d8bb;--anatomy-shade-3:#f0e5cf;
+  --anatomy-lit-top:#fffaf0;--anatomy-lit-shade:#efe3cb;
+  --anatomy-hi:#3b2a1c;--anatomy-mid:#8c7457;--anatomy-lo:#b49c7b;--anatomy-faint:#d6c4a3;--anatomy-lit:#1c120a;
+  --anatomy-halo:#7a5e3c;--anatomy-halo-opacity:.34;--anatomy-dot:#5b4630;
+  --anatomy-red:#b5452f;--anatomy-green:#5f7d3a;--anatomy-blue:#3f5f7a;
+  --anatomy-lift:inset 0 1px 0 0 #fffaf0,0 0 0 1px #3b2a1c14,0 1px 1px -.5px #3b2a1c12,0 3px 3px -1.5px #3b2a1c12,0 6px 6px -3px #3b2a1c12,0 12px 12px -6px #3b2a1c12;
+}
+.rb-rim{fill:var(--anatomy-top);stroke:var(--anatomy-hi);stroke-width:var(--anatomy-weight)}
