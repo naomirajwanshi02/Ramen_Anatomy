@@ -1,5 +1,7 @@
 # Anatomy of Ramen — WebAR
 
+**Live:** https://naomirajwanshi02.github.io/Ramen_Anatomy/ (open it on your phone, allow the camera, tap the bowl)
+
 A bowl of shoyu ramen floats over your phone's back camera. **Tap the bowl** and it explodes into its parts, stacked like an exploded diagram. **Tap any floating piece** (or its number, or its chip in the tray) for one line about what it does.
 
 The design system is copied from **Noh_Masks**: the Anatomy kit in the sepia theme (`css/anatomy-sepia.css`), plates with `Fig.` corners, Zen Maru Gothic, red pill buttons, a glass name card with hint and a scrolling tray of numbered chips. The ramen is built procedurally in three.js (no model files). Its parts are modelled in centimetres from a real donburi and the two reference paintings in `assets/`.
