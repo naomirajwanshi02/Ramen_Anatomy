@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anatomy of Ramen target maker</title>
+<style>
+  body{margin:0;padding:16px;background:#ecdfc6;color:#3b2a1c;font:14px/1.5 ui-monospace,Consolas,monospace}
+  img,canvas{max-width:100%;box-shadow:0 0 0 1px #8c7457;display:block;margin:10px 0}
+  button{font:inherit;padding:8px 14px;margin-right:6px}
+  #log{white-space:pre-wrap}
+</style></head>
+<body>
+<p>Draws <b>target.png</b> (the ramen card the iPhone version tracks) from the bowl illustration in <code>assets/ref-bowl.jpg</code>, and compiles it into
+<b>targets.mind</b> with MindAR's own compiler. Run it from <code>tools/serve.ps1</code>, which accepts the files back. <code>?build=1</code> does both.</p>
+<button id="draw">1 · Draw target</button><button id="compile">2 · Compile .mind</button>
+<div id="log"></div>
+<div id="out"></div>
+<script type="module">
+const W = 1500, H = 1000;
+const log = (t) => { document.getElementById('log').textContent += t + '\n'; };
+const out = document.getElementById('out');
+function rng(seed){ let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; }; }
+const load = (src) => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+
+async function draw(){
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const r = rng(2026);
+  g.fillStyle = '#f1e5cc'; g.fillRect(0, 0, W, H);
+  // paper fibres and ink speckle: dense, non-repeating texture is what the tracker locks onto
+  for (let i = 0; i < 2800; i++){
+    const x = r() * W, y = r() * H, a = r() * 6.28, l = 3 + r() * 14;
+    g.strokeStyle = `rgba(140,116,87,${0.12 + r() * 0.25})`; g.lineWidth = 0.6 + r();
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  for (let i = 0; i < 900; i++){ g.fillStyle = `rgba(59,42,28,${0.2 + r() * 0.5})`; g.beginPath(); g.arc(r() * W, r() * H, 0.6 + r() * 1.8, 0, 6.28); g.fill(); }
+  // Anatomy plate frame and ruler
+  g.strokeStyle = '#3b2a1c'; g.lineWidth = 4; g.strokeRect(22, 22, W - 44, H - 44);
+  g.strokeStyle = '#8c7457'; g.lineWidth = 1.5; g.strokeRect(34, 34, W - 68, H - 68);
+  g.fillStyle = '#5b4630'; g.font = '13px Consolas,monospace';
+  for (let x = 40, n = 0; x < W - 40; x += 12, n++){
+    const major = n % 5 === 0; g.strokeStyle = '#3b2a1c'; g.lineWidth = major ? 2 : 1;
+    g.beginPath(); g.moveTo(x, 34); g.lineTo(x, 34 + (major ? 16 : 8)); g.stroke();
+    if (n % 10 === 0) g.fillText(String(n), x + 3, 64);
+  }
+  for (let y = 40, n = 0; y < H - 40; y += 12, n++){
+    const major = n % 5 === 0; g.lineWidth = major ? 2 : 1;
+    g.beginPath(); g.moveTo(34, y); g.lineTo(34 + (major ? 16 : 8), y); g.stroke();
+  }
+  for (const [x, y] of [[44, 44], [W - 44, 44], [44, H - 44], [W - 44, H - 44]]){ g.fillStyle = '#d2bd98'; g.beginPath(); g.arc(x, y, 5, 0, 6.28); g.fill(); g.lineWidth = 1.5; g.stroke(); }
+  // the bowl illustration, its white ground multiplied into the paper
+  const img = await load('../assets/ref-bowl.jpg?' + Date.now());
+  const iw = 860, ih = iw * img.height / img.width;
+  g.save(); g.globalCompositeOperation = 'multiply';
+  g.drawImage(img, 70, H - ih - 70, iw, ih);
+  g.restore();
+  // title block
+  g.fillStyle = '#2b1e13'; g.font = '700 64px Georgia,"Times New Roman",serif'; g.fillText('ANATOMY OF', 950, 170);
+  g.fillStyle = '#b5452f'; g.font = 'italic 700 132px Georgia,"Times New Roman",serif'; g.fillText('Ramen', 950, 300);
+  g.fillStyle = '#5b4630'; g.font = '20px Consolas,monospace'; g.fillText('FIG. 01 · SCAN ME, TAP THE BOWL', 955, 350);
+  // the five elements as fine print, and a thunder-pattern strip
+  const els = ['BROTH', 'TARE', 'AROMATIC OIL', 'NOODLES', 'TOPPINGS'];
+  g.font = '700 24px Consolas,monospace';
+  els.forEach((t, i) => { g.fillStyle = i % 2 ? '#5b4630' : '#b5452f'; g.fillText(t, 960, 450 + i * 46); });
+  g.strokeStyle = '#b5452f'; g.lineWidth = 6; g.lineJoin = 'miter';
+  for (let k = 0; k < 9; k++){
+    const x0 = 960 + k * 50, y0 = 730, s = 4, m = k % 2;
+    const pts = [[0, 10], [0, 0], [10, 0], [10, 8], [2.6, 8], [2.6, 2.6], [7.4, 2.6], [7.4, 5.6], [5, 5.6]];
+    g.beginPath(); pts.forEach(([px, py], j) => { const X = x0 + (m ? 10 - px : px) * s, Y = y0 + py * s; j ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.stroke();
+  }
+  g.lineWidth = 3; g.strokeRect(950, 718, 470, 66);
+  // a seal
+  g.save(); g.translate(1385, 860); g.rotate(-0.2);
+  g.strokeStyle = '#b5452f'; g.lineWidth = 7; g.beginPath(); g.arc(0, 0, 54, 0, 6.28); g.stroke();
+  g.fillStyle = '#b5452f'; g.font = '900 40px Georgia,serif'; g.textAlign = 'center'; g.fillText('5', 0, 14);
+  g.restore();
+  g.fillStyle = '#5b4630'; g.font = '15px Consolas,monospace'; g.fillText('PRINT ME OR SHOW ME', 960, 880); g.fillText('ON ANOTHER SCREEN', 960, 904);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+  out.innerHTML = '';
+  const shown = new Image(); shown.src = URL.createObjectURL(blob); out.appendChild(shown);
+  const res = await fetch('/__save?name=target.png', { method: 'POST', body: blob });
+  log(`target.png: ${res.ok ? 'saved' : 'save failed'} (${(blob.size / 1024).toFixed(0)} KB)`);
+}
+
+async function compile(){
+  log('loading MindAR compiler…');
+  await import('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js');
+  // onload, not decode(): decode() never settles in a background tab
+  const img = await load('../target.png?' + Date.now());
+  const compiler = new window.MINDAR.IMAGE.Compiler();
+  let last = -10;
+  const data = await compiler.compileImageTargets([img], (p) => { if (p - last >= 10){ last = p; log(`compiling ${p.toFixed(0)}%`); } });
+  const t = data[0];
+  log(`detection points: ${t.matchingData.reduce((n, l) => n + l.maximaPoints.length + l.minimaPoints.length, 0)} over ${t.matchingData.length} scales; tracking points: ${t.trackingData.reduce((n, l) => n + l.points.length, 0)}`);
+  const buf = await compiler.exportData();
+  const res = await fetch('/__save?name=targets.mind', { method: 'POST', body: new Blob([buf]) });
+  log(`targets.mind: ${res.ok ? 'saved' : 'save failed'}`);
+  window.__done = true;
+}
+
+document.getElementById('draw').onclick = draw;
+document.getElementById('compile').onclick = compile;
+if (new URLSearchParams(location.search).has('build')) draw().then(compile).catch((e) => { log('ERROR ' + e); window.__done = 'error'; });
+</script>
+</body></html>

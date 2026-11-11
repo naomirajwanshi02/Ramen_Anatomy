@@ -14,12 +14,13 @@
 <link rel="stylesheet" href="vendor/anatomy/iso.css">
 <link rel="stylesheet" href="css/anatomy-sepia.css">
 <link rel="stylesheet" href="css/app.css">
-<!-- same pins as the other NomAR apps (mind-ar 1.2.5 needs three 0.160.0) -->
+<!-- same pins as the other NomAR apps: mind-ar 1.2.5 needs three 0.160.0 -->
 <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
   }
 }
 </script>
@@ -28,7 +29,6 @@
 
 <!-- camera + 3D -->
 <div id="ar"></div>
-<div id="pins" aria-label="Parts"></div>
 
 <!-- ============ 1 · WELCOME ============ -->
 <section id="intro" class="screen dim on">
@@ -40,18 +40,23 @@
       <p>At its core, ramen has <b>five elements</b>: broth, noodles, tare, oil and toppings. Each one has its own job, and none of them works alone.</p>
       <ol class="steps">
         <li><b>1</b><span>Let us use your <b>camera</b></span></li>
-        <li><b>2</b><span><b>Tap the bowl</b> to explode it</span></li>
-        <li><b>3</b><span>Tap any <b>piece</b> to learn about it</span></li>
-        <li><b>4</b><span><b>Drag</b> to turn, <b>pinch</b> to resize</span></li>
+        <li><b>2</b><span id="stepPlace">Point your camera at the <b>ramen card</b></span></li>
+        <li><b>3</b><span><b>Tap the bowl</b>, then <b>walk round</b> it</span></li>
+        <li><b>4</b><span>Tap any <b>piece</b> to learn about it</span></li>
       </ol>
-      <p class="small">The bowl appears over your <b>back camera</b>. The video stays on this phone: nothing is recorded or sent anywhere.</p>
-      <button class="btn red" id="goBtn" disabled>Allow camera &amp; start</button>
+      <p class="small" id="camNote"></p>
+      <button class="btn red" id="goBtn" disabled>Start AR</button>
       <div class="status dark" id="camStatus"></div>
-      <button class="link" id="previewBtn">No camera? Look at the bowl instead</button>
       <span class="corner bl">ages 8–15</span><span class="corner br">12 parts</span>
     </div>
   </div>
 </section>
+
+<!-- ============ card mode: find the card ============ -->
+<div id="guide" class="overlay">
+  <div class="frame"><i></i><i></i><i></i><i></i><div class="sweep"></div></div>
+  <a class="btn ghost small getcard" href="target.png" target="_blank" rel="noopener">Get the card</a>
+</div>
 
 <!-- ============ 2 · THE BOWL ============ -->
 <div id="hud" class="overlay">
@@ -66,7 +71,7 @@
     </div>
     <div class="iconcol">
       <button class="iconbtn" id="closeBtn" aria-label="Back to the start"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
-      <button class="iconbtn" id="centreBtn" aria-label="Bring the bowl back in front of me"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1.8v4M12 18.2v4M1.8 12h4M18.2 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <button class="iconbtn" id="centreBtn" aria-label="Move the bowl somewhere else"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1.8v4M12 18.2v4M1.8 12h4M18.2 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 

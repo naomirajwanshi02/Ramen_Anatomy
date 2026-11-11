@@ -165,17 +165,13 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 .chip b{font-size:11.5px;text-align:center;min-height:2.2em;display:flex;align-items:center}
 .chip img:not([src]){visibility:hidden}
 
-/* numbered pins that follow the floating parts (Anatomy plate style) */
-#pins{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity .35s}
-#pins.on{opacity:1}
-#pins.on .pin{pointer-events:auto}
-.pin{position:absolute;left:0;top:0;border:0;padding:0;background:none;width:30px;height:30px;margin:-15px 0 0 -15px;
-  font:inherit;color:var(--anatomy-strong);will-change:transform}
-.pin i{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--anatomy-mono);font-style:normal;
-  background:var(--glass);box-shadow:var(--anatomy-lift),0 0 0 1px var(--anatomy-mid);transition:transform .2s var(--anatomy-ease),background .2s}
-.pin span{position:absolute;top:50%;left:38px;transform:translateY(-50%);display:none;padding:5px 10px;border-radius:999px;background:var(--glass);
-  font-weight:800;font-size:13px;white-space:nowrap;box-shadow:var(--anatomy-lift),0 0 0 1px var(--anatomy-mid)}
-.pin.left span{left:auto;right:38px}
-.pin.on{z-index:2}
-.pin.on i{background:var(--anatomy-red);color:#fff8ec;transform:scale(1.15)}
-.pin.on span{display:block}
+/* WebXR: the room is drawn by the phone behind the page, so everything must be see-through */
+html:has(body.xr),body.xr,body.xr #ar{background:transparent!important}
+body.xr #ar canvas.stage{visibility:hidden}
+/* "move the bowl" only makes sense when it sits in the room */
+#centreBtn{display:none}
+body.mode-xr #centreBtn{display:grid}
+/* card mode: corner frame while the card is out of sight */
+#guide{z-index:9;align-items:center;justify-content:center}
+#guide .getcard{position:absolute;left:50%;top:calc(50% + min(40vw,210px) * .66 + 18px);transform:translateX(-50%);pointer-events:auto}
+#ar video{object-fit:cover}
