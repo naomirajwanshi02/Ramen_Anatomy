@@ -137,7 +137,8 @@ function fitFor(u){
 
 // ------------------------------------------------------------------ loop
 function frame(now){
-  const dt = Math.min(0.05, (now - (R.last || now)) / 1000);
+  // never negative: a throttled tab can hand back an earlier timestamp, and exp(-dt·k) would blow up
+  const dt = THREE.MathUtils.clamp((now - (R.last || now)) / 1000, 0, 0.05) || 0;
   R.last = now; R.t += dt;
   step(dt, now);
   R.renderer.render(R.scene, R.camera);
@@ -164,6 +165,7 @@ function step(dt, now = performance.now()){
   R.fit.scale.setScalar(F.s);
   R.fit.position.y = -F.c * F.s;
   R.spin.position.y += (F.lift - R.spin.position.y) * (1 - Math.exp(-dt * 6));
+  if (!Number.isFinite(R.spin.position.y)) R.spin.position.y = Number.isFinite(F.lift) ? F.lift : 0;
   R.tilt.rotation.x = F.tilt;
 
   if (R.gyro && R.devQ) R.camera.quaternion.slerp(R.devQ, 1 - Math.exp(-dt * 25));
