@@ -1,10 +1,9 @@
-// The AR stage. The ramen is anchored to one spot in the room so you can walk
-// all the way round it, whole or exploded:
+// The AR stage: the ramen over the live camera, in one of three modes:
 //
 //  · 'xr'    Android Chrome (WebXR immersive-ar): the phone tracks the room; a ring
 //            finds the table, a tap sets the bowl down at real size (23 cm).
-//  · 'card'  iPhone and anything without WebXR: MindAR image tracking (mind-ar 1.2.5
-//            + three 0.160.0, the house pins) sits the bowl on the ramen card.
+//  · 'card'  iPhone and anything without WebXR: scan the ramen card once (MindAR, mind-ar 1.2.5
+//            + three 0.160.0), then the bowl floats free in front of you; the card can go away.
 //  · 'preview' (?preview=1, for development only): no camera, a lit backdrop.
 //
 // In every mode: tap the bowl to take it apart, tap a piece to read about it,
@@ -15,7 +14,6 @@ import { buildRamen } from './ramen.js';
 import { setupLook, roomLight } from './look.js';
 
 const DIST = 60;            // preview: cm in front of the camera
-const CARD_SCALE = 0.85 / 23; // card mode: the bowl is 85% of the card's width
 const params = new URLSearchParams(location.search);
 export const TARGET_SRC = params.get('target') || './targets.mind';
 
@@ -28,7 +26,7 @@ const R = {
   // xr
   session: null, refSpace: null, hitSource: null, reticle: null, placed: null, isPlaced: false, placing: false,
   // card
-  mindar: null, cardSeen: false,
+  mindar: null, freed: false, devQ: null, q0: null, pop: 1,
   drag: { on: false, moved: 0, t0: 0, pinch: 0, zoom0: 1 },
 };
 
@@ -159,51 +157,86 @@ export function replace(){
   R.cb.onPlacing?.(true, !!R.reticle?.visible);
 }
 
-// ------------------------------------------------------------------ mode: card (MindAR image tracking)
+
+// ------------------------------------------------------------------ mode: card (scan once, then free)
+// MindAR only recognises the card. The moment it is found, tracking stops, the
+// camera keeps running, and the bowl pops up in front of you: put the card away
+// and keep exploring. The motion sensor keeps the bowl where it is in the room
+// when you turn the phone; ⊕ brings it back in front of you.
 export async function startCard(){
-  R.mode = 'card';
+  R.mode = 'card'; R.freed = false;
+  // the motion sensor needs asking inside this tap on iPhone, before anything is awaited
+  const DOE = window.DeviceOrientationEvent;
+  const gyroAsk = typeof DOE?.requestPermission === 'function' ? DOE.requestPermission().catch(() => 'denied') : Promise.resolve('granted');
+  gyroAsk.then((r) => { if (r === 'granted' && R.mode === 'card') addEventListener('deviceorientation', onOrient); });
   const { MindARThree } = await import('mindar-image-three');
   const mindar = new MindARThree({
     container: R.container, imageTargetSrc: TARGET_SRC, uiScanning: 'no', uiLoading: 'no', uiError: 'no',
-    // heavy smoothing: the bowl should sit still on the card, not shiver
-    filterMinCF: 0.0001, filterBeta: 0.01, warmupTolerance: 3, missTolerance: 8,
+    filterMinCF: 0.001, filterBeta: 1000, warmupTolerance: 2, missTolerance: 10,
   });
   R.mindar = mindar;
-  mindar.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  const look = setupLook(mindar.renderer, mindar.scene);
   const anchor = mindar.addAnchor(0);
-  // the card is MindAR's x-y plane, its normal +z: stand the bowl up on it, front toward the card's bottom edge
-  const stand = new THREE.Group();
-  stand.rotation.x = Math.PI / 2;
-  anchor.group.add(stand);
-  R.anchor.remove(R.spin); stand.add(R.spin);
-  R.tilt.rotation.set(0, 0, 0);
-  R.fit.position.set(0, 0, 0);
-  R.cardStand = stand;
-  anchor.onTargetFound = () => { R.cardSeen = true; R.cb.onCard?.(true); };
-  anchor.onTargetLost = () => { R.cardSeen = false; R.cb.onCard?.(false); };
+  anchor.onTargetFound = () => { if (!R.freed) freeFromCard(); };
   R.renderer.domElement.style.display = 'none';
   try { await mindar.start(); }
   catch (e){ stopCard(); throw e || new Error('camera unavailable'); }
   R.video = mindar.video;
-  R.light = roomLight(look, mindar.renderer);
-  R.cardRender = () => mindar.renderer.render(mindar.scene, mindar.camera);
+  if (R.freed) return; // found during start-up
+  mindar.renderer.setAnimationLoop(() => mindar.renderer.render(mindar.scene, mindar.camera));
   R.cb.onCard?.(false);
-  R.u = 0; R.target = 0;
-  mindar.renderer.setAnimationLoop(frame);
 }
+
+function freeFromCard(){
+  const m = R.mindar;
+  R.freed = true;
+  // stop recognising, keep the camera picture
+  try { m.controller.stopProcessVideo(); } catch { /* fine */ }
+  try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
+  m.renderer.domElement.style.display = 'none';
+  R.renderer.domElement.style.display = '';
+  R.video = m.video;
+  R.light = roomLight(R.look, R.renderer);
+  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = 1; R.pop = 0;
+  R.camera.quaternion.identity();
+  R.q0 = R.devQ ? R.devQ.clone() : null;
+  onResize();
+  R.renderer.setAnimationLoop(frame);
+  R.cb.onFound?.();
+}
+
+// motion sensor: keep the floating bowl still in the room while the phone turns
+const _euler = new THREE.Euler(), _qa = new THREE.Quaternion(), _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), _zee = new THREE.Vector3(0, 0, 1);
+function onOrient(e){
+  if (e.alpha == null || e.beta == null) return;
+  const d = THREE.MathUtils.DEG2RAD;
+  const orient = (screen.orientation?.angle ?? window.orientation ?? 0) * d;
+  _euler.set(e.beta * d, e.alpha * d, -e.gamma * d, 'YXZ');
+  const q = R.devQ || (R.devQ = new THREE.Quaternion());
+  q.setFromEuler(_euler).multiply(_q1).multiply(_qa.setFromAxisAngle(_zee, -orient));
+  if (R.freed && !R.q0) R.q0 = q.clone(); // the first reading after the scan is "straight ahead"
+}
+
+// Bring the floating bowl back in front of the camera.
+export function recentre(){
+  R.yaw = 0; R.yawV = 0;
+  R.q0 = R.devQ ? R.devQ.clone() : null;
+  R.camera.quaternion.identity();
+}
+
 function stopCard(){
   const m = R.mindar;
+  removeEventListener('deviceorientation', onOrient);
+  R.devQ = null; R.q0 = null; R.freed = false;
   if (!m) return;
   R.mindar = null;
   try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
   try { m.stop(); } catch { /* never started */ }
-  if (R.cardStand){ R.cardStand.remove(R.spin); R.anchor.add(R.spin); R.cardStand = null; }
   try { m.renderer.dispose(); } catch { /* fine */ }
   R.container.querySelectorAll('video').forEach((v) => { v.srcObject?.getTracks?.().forEach((t) => t.stop()); v.remove(); });
   [...R.container.children].forEach((el) => { if (el !== R.renderer.domElement) el.remove(); });
   R.renderer.domElement.style.display = '';
-  R.cardRender = null; R.video = null; R.light = null;
+  R.camera.quaternion.identity();
+  R.video = null; R.light = null;
 }
 
 // ------------------------------------------------------------------ mode: preview (development only)
@@ -238,9 +271,7 @@ export const mode = () => R.mode;
 function frameFor(u){
   const k = u * u * (3 - 2 * u);
   if (R.mode === 'xr') return { s: 0.01 * R.zoom, y: 0, tilt: 0, lift: 0 };          // true size, in metres
-  // card widths; the exploded tower (66 cm) shrinks a little so it still fits the view from arm's length
-  if (R.mode === 'card') return { s: CARD_SCALE * THREE.MathUtils.lerp(1, 0.72, k) * R.zoom, y: 0, tilt: 0, lift: 0 };
-  // preview: fit the ramen into the free band between the HUD plates
+  // card (after the scan) and preview: float in front of the camera, fitted into the free band between the HUD plates
   const cam = R.camera;
   const visH = 2 * DIST * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), visW = visH * cam.aspect;
   const H = R.container.clientHeight || innerHeight;
@@ -260,9 +291,9 @@ function frame(now, xrFrame){
   R.last = now; R.t += dt;
   if (xrFrame) xrHitTest(xrFrame);
   step(dt, now);
-  if (R.cardRender) R.cardRender();
-  else R.renderer.render(R.scene, R.camera);
+  R.renderer.render(R.scene, R.camera);
 }
+const _qt = new THREE.Quaternion();
 function step(dt, now = performance.now()){
   const dir = Math.sign(R.target - R.u);
   R.u = THREE.MathUtils.clamp(R.u + dir * dt / 1.9, 0, 1);
@@ -282,10 +313,19 @@ function step(dt, now = performance.now()){
   R.fit.scale.setScalar(F.s);
   R.fit.position.y = F.y;
   R.tilt.rotation.x = F.tilt;
-  if (R.mode === 'preview'){
+  if (R.mode !== 'xr'){
     R.spin.position.y += (F.lift - R.spin.position.y) * (1 - Math.exp(-dt * 6));
     if (!Number.isFinite(R.spin.position.y)) R.spin.position.y = Number.isFinite(F.lift) ? F.lift : 0;
   } else R.spin.position.y = 0;
+  // after the scan the bowl pops up out of the card, with a little overshoot
+  if (R.pop < 1){ R.pop = Math.min(1, R.pop + dt / 0.6); }
+  const k = R.pop, pop = 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2;
+  R.spin.scale.setScalar(Math.max(0.001, pop));
+  // card mode: the phone turns, the bowl stays where it is in the room
+  if (R.mode === 'card' && R.freed && R.devQ && R.q0){
+    _qt.copy(R.q0).invert().multiply(R.devQ);
+    R.camera.quaternion.slerp(_qt, 1 - Math.exp(-dt * 20));
+  }
   if (R.light) R.light(R.video, now, dt);
 }
 
@@ -339,7 +379,7 @@ function pickWith(ray){
   return null;
 }
 export function pickAt(x, y){
-  const cam = R.mode === 'card' && R.mindar ? R.mindar.camera : R.camera;
+  const cam = R.camera;
   const r = R.container.getBoundingClientRect();
   _ndc.set((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
   _caster.setFromCamera(_ndc, cam);
@@ -401,5 +441,5 @@ function thumbnails(){
 }
 
 // Headless checks: advance n fixed frames (the hidden preview pane throttles animation).
-R.step = (n = 30, dt = 1 / 30) => { for (let i = 0; i < n; i++){ R.t += dt; step(dt); } if (R.cardRender) R.cardRender(); else R.renderer.render(R.scene, R.camera); };
+R.step = (n = 30, dt = 1 / 30) => { for (let i = 0; i < n; i++){ R.t += dt; step(dt); } R.renderer.render(R.scene, R.camera); };
 window.__stage = R;

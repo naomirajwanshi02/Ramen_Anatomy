@@ -2,14 +2,14 @@
 
 **Live:** https://naomirajwanshi02.github.io/Ramen_Anatomy/ (open it on your phone and tap **Start AR**)
 
-A bowl of shoyu ramen is set down in your room over the live camera, and it **stays in one place so you can walk all the way round it**. **Tap the bowl** and it explodes into its parts, stacked like an exploded diagram. **Tap any floating piece** (or its picture in the tray) for its name and one line about what it does. There are no numbers on the pieces and no backdrop: what you see behind the ramen is your room.
+A bowl of shoyu ramen appears over the live camera: on Android it is set down on your table so you can walk round it; on iPhone you scan the ramen card once and then the bowl floats free, no card needed. **Tap the bowl** and it explodes into its parts, stacked like an exploded diagram. **Tap any floating piece** (or its picture in the tray) for its name and one line about what it does. There are no numbers on the pieces and no backdrop: what you see behind the ramen is your room.
 
 ## How it is anchored
 
 | Phone | Anchor | How |
 |---|---|---|
 | **Android** (Chrome with ARCore) | **The room** (WebXR `immersive-ar` + hit test) | Move the phone over a table until a ring appears, tap to set the bowl down at real size (23 cm). The ⊕ button moves it. |
-| **iPhone** (Safari has no WebXR) and anything else | **The ramen card** (MindAR image tracking) | Print [`target.png`](target.png) or show it on another screen. The bowl stands on the card; walk round the card to see every side. |
+| **iPhone** (Safari has no WebXR) and anything else | **Scan the ramen card once** (MindAR recognition), then the bowl floats free | Print [`target.png`](target.png) or show it on another screen and point the camera at it. Once it is found, put the card away: the bowl floats in front of you over the camera, stays put in the room when you turn the phone (motion sensor), drag turns it round, ⊕ brings it back in front of you. |
 
 `?card=1` forces the card on Android too. The card is drawn from the bowl illustration (`assets/ref-bowl.jpg`, the tracking target only) and compiled by `tools/make-target.html?build=1`.
 

@@ -1,5 +1,5 @@
-// Anatomy of Ramen: start the camera → the bowl is set down in the room (Android:
-// on a table you tap; iPhone: on the ramen card) → walk round it → tap it and it
+// Anatomy of Ramen: start the camera → the bowl appears (Android: set down on a
+// table you tap, walk round it; iPhone: scan the ramen card once, then it floats free) → tap it and it
 // explodes into its parts → tap a part for one line about it.
 //
 // ?preview=1  development only: no camera, a lit backdrop
@@ -11,7 +11,7 @@ import * as Stage from './stage.js';
 
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const S = { phase: 'intro', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false, cardSeen: false };
+const S = { phase: 'intro', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false, freed: false };
 
 const overlay = (id, on) => $(id).classList.toggle('on', on);
 const show = (id) => document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id));
@@ -32,7 +32,7 @@ function fail(err){
 let thumbs = {};
 await new Promise((ok) => setTimeout(ok, 60)); // let the "cooking" plate paint first
 try {
-  thumbs = Stage.init($('ar'), { onTap, onEnd: back, onPlacing, onCard, band });
+  thumbs = Stage.init($('ar'), { onTap, onEnd: back, onPlacing, onCard, onFound, band });
 } catch (e) { fail(e); }
 $('introBowl').src = thumbs.whole || '';
 $('cooking').classList.remove('on');
@@ -41,10 +41,10 @@ buildTray();
 // Which anchor this phone can do: room tracking (WebXR) or the card.
 S.xr = q.get('card') !== '1' && await Stage.xrSupported();
 document.body.classList.toggle('has-xr', S.xr);
-$('stepPlace').innerHTML = S.xr ? 'Tap a <b>table</b> to set the bowl down' : 'Point your camera at the <b>ramen card</b>';
+$('stepPlace').innerHTML = S.xr ? 'Tap a <b>table</b> to set the bowl down' : 'Scan the <b>ramen card</b> once';
 $('camNote').innerHTML = S.xr
   ? 'The bowl appears in your room at real size. The camera stays on this phone: nothing is recorded or sent anywhere.'
-  : 'Print the <a href="target.png" target="_blank" rel="noopener">ramen card</a> or open it on another screen. The camera stays on this phone: nothing is recorded or sent anywhere.';
+  : 'Scan the <a href="target.png" target="_blank" rel="noopener">ramen card</a> once (printed or on another screen), then put it away: the bowl stays with you. The camera stays on this phone: nothing is recorded or sent anywhere.';
 $('goBtn').disabled = false;
 
 // ------------------------------------------------------------ 1 · welcome → AR
@@ -67,7 +67,7 @@ function camFail(err, xr = false){
   if (xr){
     // fall back to the card on this device
     S.xr = false; document.body.classList.remove('has-xr');
-    $('stepPlace').innerHTML = 'Point your camera at the <b>ramen card</b>';
+    $('stepPlace').innerHTML = 'Scan the <b>ramen card</b> once';
     $('camStatus').textContent = 'Room tracking did not start here, so the bowl will sit on the ramen card instead. Tap the button again.';
     return;
   }
@@ -102,11 +102,19 @@ function onPlacing(placing, ringSeen){
   if (!placing) toast('The bowl is on the table. <b>Walk round it</b> to see every side.', 3800);
   setHint();
 }
-// card: found / lost
-function onCard(seen){
-  S.cardSeen = seen;
-  overlay('guide', !seen && S.phase === 'bowl');
-  if (seen) buzz(25);
+// card: still looking for it
+function onCard(){
+  if (!S.freed) overlay('guide', S.phase === 'bowl');
+  setHint();
+}
+// card: scanned once, the bowl is free
+function onFound(){
+  S.freed = true;
+  document.body.classList.add('freed');
+  overlay('guide', false);
+  buzz(40);
+  overlay('found', true);
+  setTimeout(() => overlay('found', false), 1400);
   setHint();
 }
 
@@ -173,8 +181,8 @@ function setCard(p){
 function setHint(){
   let h;
   if (S.mode === 'xr' && S.placing) h = S.ringSeen ? 'Tap to <b>set the bowl down</b> on the ring' : 'Move your phone slowly over a <b>table</b> until a ring appears';
-  else if (S.mode === 'card' && !S.cardSeen) h = 'Point your camera at the <b>ramen card</b>';
-  else if (!Stage.isExploded()) h = '<b>Tap the bowl</b> to take it apart. Walk round it to see every side';
+  else if (S.mode === 'card' && !S.freed) h = 'Point your camera at the <b>ramen card</b> to unlock the bowl';
+  else if (!Stage.isExploded()) h = S.mode === 'xr' ? '<b>Tap the bowl</b> to take it apart. Walk round it to see every side' : '<b>Tap the bowl</b> to take it apart. <b>Drag</b> to turn it round';
   else if (S.part) h = 'Tap another piece, or <b>Put it back together</b>';
   else h = 'Tap any <b>floating piece</b> to learn about it';
   $('hint').innerHTML = h;
@@ -185,8 +193,8 @@ function hintLoop(){
   S.hintTimer = setInterval(() => {
     if (S.phase !== 'bowl') return;
     n++;
-    const busy = (S.mode === 'xr' && S.placing) || (S.mode === 'card' && !S.cardSeen);
-    if (!busy && n % 3 === 2) $('hint').innerHTML = 'Walk round it, or <b>drag</b> to turn it and <b>pinch</b> to resize';
+    const busy = (S.mode === 'xr' && S.placing) || (S.mode === 'card' && !S.freed);
+    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, or <b>drag</b> to turn it and <b>pinch</b> to resize' : '<b>Drag</b> to turn it, <b>pinch</b> to resize. Lost it? Tap <b>&oplus;</b>';
     else setHint();
   }, 7000);
 }
@@ -209,10 +217,10 @@ function back(){
   S.phase = 'intro';
   clearInterval(S.hintTimer);
   setApart(false, true);
-  overlay('hud', false); overlay('guide', false);
+  overlay('hud', false); overlay('guide', false); overlay('found', false);
   Stage.stop();
-  document.body.classList.remove('preview', 'mode-xr', 'mode-card', 'placing');
-  S.mode = null;
+  document.body.classList.remove('preview', 'mode-xr', 'mode-card', 'placing', 'freed');
+  S.mode = null; S.freed = false;
   show('intro');
 }
 
@@ -220,7 +228,7 @@ function back(){
 $('goBtn').addEventListener('click', start);
 $('explodeBtn').addEventListener('click', () => setApart(!Stage.isExploded()));
 $('closeBtn').addEventListener('click', back);
-$('centreBtn').addEventListener('click', () => { Stage.replace(); buzz(10); });
+$('centreBtn').addEventListener('click', () => { if (S.mode === 'xr') Stage.replace(); else Stage.recentre(); buzz(10); });
 $('errBtn').addEventListener('click', () => location.reload());
 addEventListener('keydown', (e) => {
   if (S.phase !== 'bowl') return;
