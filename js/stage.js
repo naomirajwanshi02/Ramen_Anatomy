@@ -175,6 +175,8 @@ export async function startCard(){
     filterMinCF: 0.001, filterBeta: 1000, warmupTolerance: 2, missTolerance: 10,
   });
   R.mindar = mindar;
+  mindar.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  R.cardLook = setupLook(mindar.renderer, mindar.scene);
   const anchor = mindar.addAnchor(0);
   anchor.onTargetFound = () => { if (!R.freed) freeFromCard(); };
   R.renderer.domElement.style.display = 'none';
@@ -192,15 +194,18 @@ function freeFromCard(){
   // stop recognising, keep the camera picture
   try { m.controller.stopProcessVideo(); } catch { /* fine */ }
   try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
-  m.renderer.domElement.style.display = 'none';
-  R.renderer.domElement.style.display = '';
+  // Draw the free bowl with MindAR's own renderer: it is the WebGL context that has just
+  // been drawing, so it is alive. iPhone Safari can drop an idle context (ours sat hidden
+  // through the whole scan while the tracker filled the GPU), and a dropped context draws nothing.
+  R.view = { renderer: m.renderer, scene: m.scene };
+  m.scene.add(R.anchor, R.camera);
   R.video = m.video;
-  R.light = roomLight(R.look, R.renderer);
+  R.light = roomLight(R.cardLook, m.renderer);
   R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = 1; R.pop = 0;
   R.camera.quaternion.identity();
   R.q0 = R.devQ ? R.devQ.clone() : null;
   onResize();
-  R.renderer.setAnimationLoop(frame);
+  m.renderer.setAnimationLoop(frame);
   R.cb.onFound?.();
 }
 
@@ -230,6 +235,7 @@ function stopCard(){
   if (!m) return;
   R.mindar = null;
   try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
+  if (R.view){ R.scene.add(R.anchor, R.camera); R.view = null; }
   try { m.stop(); } catch { /* never started */ }
   try { m.renderer.dispose(); } catch { /* fine */ }
   R.container.querySelectorAll('video').forEach((v) => { v.srcObject?.getTracks?.().forEach((t) => t.stop()); v.remove(); });
@@ -291,9 +297,14 @@ function frame(now, xrFrame){
   R.last = now; R.t += dt;
   if (xrFrame) xrHitTest(xrFrame);
   step(dt, now);
-  R.renderer.render(R.scene, R.camera);
+  draw();
 }
 const _qt = new THREE.Quaternion();
+function draw(){
+  const v = R.view;
+  if (v) v.renderer.render(v.scene, R.camera);
+  else R.renderer.render(R.scene, R.camera);
+}
 function step(dt, now = performance.now()){
   const dir = Math.sign(R.target - R.u);
   R.u = THREE.MathUtils.clamp(R.u + dir * dt / 1.9, 0, 1);
@@ -325,6 +336,8 @@ function step(dt, now = performance.now()){
   if (R.mode === 'card' && R.freed && R.devQ && R.q0){
     _qt.copy(R.q0).invert().multiply(R.devQ);
     R.camera.quaternion.slerp(_qt, 1 - Math.exp(-dt * 20));
+    const c = R.camera.quaternion;
+    if (!(Number.isFinite(c.x) && Number.isFinite(c.y) && Number.isFinite(c.z) && Number.isFinite(c.w))){ c.identity(); R.q0 = R.devQ && Number.isFinite(R.devQ.w) ? R.devQ.clone() : null; }
   }
   if (R.light) R.light(R.video, now, dt);
 }
@@ -441,5 +454,5 @@ function thumbnails(){
 }
 
 // Headless checks: advance n fixed frames (the hidden preview pane throttles animation).
-R.step = (n = 30, dt = 1 / 30) => { for (let i = 0; i < n; i++){ R.t += dt; step(dt); } R.renderer.render(R.scene, R.camera); };
+R.step = (n = 30, dt = 1 / 30) => { for (let i = 0; i < n; i++){ R.t += dt; step(dt); } draw(); };
 window.__stage = R;
