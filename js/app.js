@@ -113,8 +113,6 @@ function onFound(){
   document.body.classList.add('freed');
   overlay('guide', false);
   buzz(40);
-  overlay('found', true);
-  setTimeout(() => overlay('found', false), 1400);
   setHint();
 }
 
@@ -194,7 +192,7 @@ function hintLoop(){
     if (S.phase !== 'bowl') return;
     n++;
     const busy = (S.mode === 'xr' && S.placing) || (S.mode === 'card' && !S.freed);
-    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, or <b>drag</b> to turn it and <b>pinch</b> to resize' : '<b>Drag</b> to turn it, <b>pinch</b> to resize. Lost it? Tap <b>&oplus;</b>';
+    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> or <b>+</b> <b>−</b> to zoom' : '<b>Drag</b> to turn it. <b>Pinch</b> or tap <b>+</b> and <b>−</b> to zoom in and out';
     else setHint();
   }, 7000);
 }
@@ -217,7 +215,7 @@ function back(){
   S.phase = 'intro';
   clearInterval(S.hintTimer);
   setApart(false, true);
-  overlay('hud', false); overlay('guide', false); overlay('found', false);
+  overlay('hud', false); overlay('guide', false);
   Stage.stop();
   document.body.classList.remove('preview', 'mode-xr', 'mode-card', 'placing', 'freed');
   S.mode = null; S.freed = false;
@@ -229,6 +227,8 @@ $('goBtn').addEventListener('click', start);
 $('explodeBtn').addEventListener('click', () => setApart(!Stage.isExploded()));
 $('closeBtn').addEventListener('click', back);
 $('centreBtn').addEventListener('click', () => { if (S.mode === 'xr') Stage.replace(); else Stage.recentre(); buzz(10); });
+$('zoomInBtn').addEventListener('click', () => { Stage.zoomBy(1.5); buzz(8); });
+$('zoomOutBtn').addEventListener('click', () => { Stage.zoomBy(1 / 1.5); buzz(8); });
 $('errBtn').addEventListener('click', () => location.reload());
 addEventListener('keydown', (e) => {
   if (S.phase !== 'bowl') return;

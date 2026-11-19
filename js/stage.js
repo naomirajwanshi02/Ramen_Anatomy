@@ -14,6 +14,7 @@ import { buildRamen } from './ramen.js';
 import { setupLook, roomLight } from './look.js';
 
 const DIST = 60;            // preview: cm in front of the camera
+const ZMIN = 0.25, ZMAX = 5; // how far you can zoom out and in
 const params = new URLSearchParams(location.search);
 export const TARGET_SRC = params.get('target') || './targets.mind';
 
@@ -22,7 +23,7 @@ const R = {
   renderer: null, scene: null, camera: null, look: null, light: null, video: null,
   ramen: null, anchor: null, spin: null, tilt: null, fit: null,
   u: 0, target: 0, selected: null, t: 0, last: 0,
-  yaw: 0, yawV: 0, zoom: 1, idle: 0,
+  yaw: 0, yawV: 0, zoom: 1, zoomT: 1, idle: 0,
   // xr
   session: null, refSpace: null, hitSource: null, reticle: null, placed: null, isPlaced: false, placing: false,
   // card
@@ -201,7 +202,7 @@ function freeFromCard(){
   m.scene.add(R.anchor, R.camera);
   R.video = m.video;
   R.light = roomLight(R.cardLook, m.renderer);
-  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = 1; R.pop = 0;
+  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1; R.pop = 0;
   R.camera.quaternion.identity();
   R.q0 = R.devQ ? R.devQ.clone() : null;
   onResize();
@@ -253,7 +254,7 @@ export function startPreview(){
 }
 
 function start(){
-  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = 1;
+  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1;
   onResize();
   R.renderer.setAnimationLoop(frame);
 }
@@ -272,6 +273,8 @@ export function setExploded(on){ R.target = on ? 1 : 0; if (!on) select(null); }
 export const isExploded = () => R.target === 1;
 export function select(id){ R.selected = id; }
 export const mode = () => R.mode;
+// the + and − buttons: one step is half as big again, eased
+export function zoomBy(f){ R.zoomT = THREE.MathUtils.clamp(R.zoomT * f, ZMIN, ZMAX); R.idle = 0; }
 
 // ------------------------------------------------------------------ framing (scale per mode)
 function frameFor(u){
@@ -313,6 +316,7 @@ function step(dt, now = performance.now()){
     pt.focus += ((id === R.selected ? 1 : 0) - pt.focus) * (1 - Math.exp(-dt * 7));
   }
   R.ramen.setExplode(R.u, R.t);
+  if (!R.drag.on) R.zoom += (R.zoomT - R.zoom) * (1 - Math.exp(-dt * 10));
 
   if (!R.drag.on){
     R.yaw += R.yawV * dt; R.yawV *= Math.exp(-dt * 3);
@@ -358,7 +362,7 @@ function bindPointer(el){
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 2){
       const [a, b] = [...pts.values()];
-      R.zoom = THREE.MathUtils.clamp(R.drag.zoom0 * Math.hypot(a.x - b.x, a.y - b.y) / Math.max(20, R.drag.pinch), 0.3, 3);
+      R.zoom = R.zoomT = THREE.MathUtils.clamp(R.drag.zoom0 * Math.hypot(a.x - b.x, a.y - b.y) / Math.max(20, R.drag.pinch), ZMIN, ZMAX);
       return;
     }
     const dx = e.clientX - prev.x;
@@ -376,7 +380,9 @@ function bindPointer(el){
   };
   el.addEventListener('pointerup', up);
   el.addEventListener('pointercancel', (e) => { pts.delete(e.pointerId); R.drag.on = false; });
-  el.addEventListener('wheel', (e) => { e.preventDefault(); R.zoom = THREE.MathUtils.clamp(R.zoom * Math.exp(-e.deltaY * 0.001), 0.3, 3); }, { passive: false });
+  el.addEventListener('wheel', (e) => { e.preventDefault(); R.zoom = R.zoomT = THREE.MathUtils.clamp(R.zoom * Math.exp(-e.deltaY * 0.0015), ZMIN, ZMAX); }, { passive: false });
+  // iPhone Safari: keep its own page pinch-zoom from stealing the gesture
+  for (const t of ['gesturestart', 'gesturechange', 'gestureend']) el.addEventListener(t, (e) => e.preventDefault(), { passive: false });
 }
 
 const _ray = new THREE.Ray(), _caster = new THREE.Raycaster(), _ndc = new THREE.Vector2();

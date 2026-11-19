@@ -9,7 +9,7 @@ A bowl of shoyu ramen appears over the live camera: on Android it is set down on
 | Phone | Anchor | How |
 |---|---|---|
 | **Android** (Chrome with ARCore) | **The room** (WebXR `immersive-ar` + hit test) | Move the phone over a table until a ring appears, tap to set the bowl down at real size (23 cm). The ⊕ button moves it. |
-| **iPhone** (Safari has no WebXR) and anything else | **Scan the ramen card once** (MindAR recognition), then the bowl floats free | Print [`target.png`](target.png) or show it on another screen and point the camera at it. Once it is found, put the card away: the bowl floats in front of you over the camera, stays put in the room when you turn the phone (motion sensor), drag turns it round, ⊕ brings it back in front of you. |
+| **iPhone** (Safari has no WebXR) and anything else | **Scan the ramen card once** (MindAR recognition), then the bowl floats free | Print [`target.png`](target.png) or show it on another screen and point the camera at it. Once it is found (no badge, it just appears), put the card away: the bowl floats in front of you over the camera, stays put in the room when you turn the phone (motion sensor), drag turns it round, ⊕ brings it back in front of you. |
 
 `?card=1` forces the card on Android too. The card is drawn from the bowl illustration (`assets/ref-bowl.jpg`, the tracking target only) and compiled by `tools/make-target.html?build=1`.
 
@@ -38,7 +38,8 @@ Noodles, tare and wood ear are single meshes with a **morph target**, so the GPU
 
 - **Tap the bowl** or **Take it apart** to explode it, **Put it back together** to rebuild it
 - **Tap a piece** or a tray chip: its name and one line appear on the card at the top
-- **Walk round it**; or **drag** to turn it and **pinch** to resize it
+- **Zoom in and out** with a pinch or the **+** and **−** buttons (0.25× to 5×)
+- **Walk round it** (Android) or **drag** to turn it
 - Keyboard: Space / Enter explode, ← → step through the parts, Esc rebuild
 
 ## URL options
