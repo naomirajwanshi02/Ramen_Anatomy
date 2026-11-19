@@ -2,8 +2,9 @@
 //
 //  · 'xr'    Android Chrome (WebXR immersive-ar): the phone tracks the room; a ring
 //            finds the table, a tap sets the bowl down at real size (23 cm).
-//  · 'card'  iPhone and anything without WebXR: scan the ramen card once (MindAR, mind-ar 1.2.5
-//            + three 0.160.0), then the bowl floats free in front of you; the card can go away.
+//  · first, always: scan the ramen card once (MindAR recognition, mind-ar 1.2.5
+//            + three 0.160.0). Then, iPhone: 'float', the bowl floats over the camera,
+//            held still in the room by the motion sensor; the card is never needed again.
 //  · 'preview' (?preview=1, for development only): no camera, a lit backdrop.
 //
 // In every mode: tap the bowl to take it apart, tap a piece to read about it,
@@ -61,8 +62,10 @@ export async function xrSupported(){
 }
 
 // ------------------------------------------------------------------ mode: WebXR (walk round it in the room)
-// Must be called straight from a tap: requestSession is the first thing it does.
+// Must be called straight from a tap: requestSession is the first thing it does
+// (after releasing the scanner's camera, which is synchronous).
 export async function startXR(){
+  if (R.mode === 'float') stopFloat();
   const session = await navigator.xr.requestSession('immersive-ar', {
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay', 'local-floor'],
@@ -159,17 +162,14 @@ export function replace(){
 }
 
 
-// ------------------------------------------------------------------ mode: card (scan once, then free)
-// MindAR only recognises the card. The moment it is found, tracking stops, the
-// camera keeps running, and the bowl pops up in front of you: put the card away
-// and keep exploring. The motion sensor keeps the bowl where it is in the room
-// when you turn the phone; ⊕ brings it back in front of you.
-export async function startCard(){
-  R.mode = 'card'; R.freed = false;
-  // the motion sensor needs asking inside this tap on iPhone, before anything is awaited
-  const DOE = window.DeviceOrientationEvent;
-  const gyroAsk = typeof DOE?.requestPermission === 'function' ? DOE.requestPermission().catch(() => 'denied') : Promise.resolve('granted');
-  gyroAsk.then((r) => { if (r === 'granted' && R.mode === 'card') addEventListener('deviceorientation', onOrient); });
+// ------------------------------------------------------------------ scan the card (once, at the start)
+// MindAR only recognises the card. The moment it is found, recognition stops, the
+// camera keeps running and the bowl floats in front of you ('float' mode): the card
+// is never asked for again.
+export async function scanCard({ onStatus } = {}){
+  stop();
+  R.freed = false;
+  onStatus?.('Loading the card scanner…');
   const { MindARThree } = await import('mindar-image-three');
   const mindar = new MindARThree({
     container: R.container, imageTargetSrc: TARGET_SRC, uiScanning: 'no', uiLoading: 'no', uiError: 'no',
@@ -181,12 +181,13 @@ export async function startCard(){
   const anchor = mindar.addAnchor(0);
   anchor.onTargetFound = () => { if (!R.freed) freeFromCard(); };
   R.renderer.domElement.style.display = 'none';
+  onStatus?.('Starting camera…');
   try { await mindar.start(); }
-  catch (e){ stopCard(); throw e || new Error('camera unavailable'); }
+  catch (e){ stopFloat(); throw e || new Error('camera unavailable'); }
   R.video = mindar.video;
-  if (R.freed) return; // found during start-up
+  if (R.freed) return;
   mindar.renderer.setAnimationLoop(() => mindar.renderer.render(mindar.scene, mindar.camera));
-  R.cb.onCard?.(false);
+  onStatus?.('Looking for the card…');
 }
 
 function freeFromCard(){
@@ -195,22 +196,55 @@ function freeFromCard(){
   // stop recognising, keep the camera picture
   try { m.controller.stopProcessVideo(); } catch { /* fine */ }
   try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
-  // Draw the free bowl with MindAR's own renderer: it is the WebGL context that has just
-  // been drawing, so it is alive. iPhone Safari can drop an idle context (ours sat hidden
-  // through the whole scan while the tracker filled the GPU), and a dropped context draws nothing.
+  // Draw the floating bowl with MindAR's own renderer: it is the WebGL context that has
+  // just been drawing, so it is alive. iPhone Safari can drop an idle context (ours sat
+  // hidden through the whole scan while the tracker filled the GPU) and then draws nothing.
   R.view = { renderer: m.renderer, scene: m.scene };
   m.scene.add(R.anchor, R.camera);
   R.video = m.video;
   R.light = roomLight(R.cardLook, m.renderer);
+  R.mode = 'float';
   R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1; R.pop = 0;
   R.camera.quaternion.identity();
-  R.q0 = R.devQ ? R.devQ.clone() : null;
+  R.q0 = null;
   onResize();
   m.renderer.setAnimationLoop(frame);
   R.cb.onFound?.();
 }
 
-// motion sensor: keep the floating bowl still in the room while the phone turns
+// Camera without the scanner, for when room tracking fails after the scan: the bowl
+// floats over a plain camera feed (the card is not needed again).
+export async function startFloat(){
+  if (R.mode === 'float') return;
+  stop();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+  const video = document.createElement('video');
+  video.className = 'feed';
+  video.setAttribute('playsinline', ''); video.muted = true; video.autoplay = true;
+  video.srcObject = stream;
+  R.container.prepend(video);
+  await video.play().catch(() => {});
+  R.video = video; R.freed = true;
+  R.light = roomLight(R.look, R.renderer);
+  R.mode = 'float';
+  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1; R.pop = 0;
+  R.camera.quaternion.identity(); R.q0 = null;
+  onResize();
+  R.renderer.setAnimationLoop(frame);
+}
+
+// The motion sensor: must be called straight from a tap (iPhone asks for permission).
+// It keeps the floating bowl still in the room while the phone turns.
+export function enableMotion(){
+  const DOE = window.DeviceOrientationEvent;
+  const ask = typeof DOE?.requestPermission === 'function' ? DOE.requestPermission().catch(() => 'denied') : Promise.resolve('granted');
+  ask.then((r) => {
+    if (r !== 'granted') return;
+    removeEventListener('deviceorientation', onOrient);
+    addEventListener('deviceorientation', onOrient);
+    R.q0 = null; // the next reading is "straight ahead"
+  });
+}
 const _euler = new THREE.Euler(), _qa = new THREE.Quaternion(), _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), _zee = new THREE.Vector3(0, 0, 1);
 function onOrient(e){
   if (e.alpha == null || e.beta == null) return;
@@ -219,7 +253,7 @@ function onOrient(e){
   _euler.set(e.beta * d, e.alpha * d, -e.gamma * d, 'YXZ');
   const q = R.devQ || (R.devQ = new THREE.Quaternion());
   q.setFromEuler(_euler).multiply(_q1).multiply(_qa.setFromAxisAngle(_zee, -orient));
-  if (R.freed && !R.q0) R.q0 = q.clone(); // the first reading after the scan is "straight ahead"
+  if (R.mode === 'float' && !R.q0){ R.q0 = q.clone(); R.camera.quaternion.identity(); }
 }
 
 // Bring the floating bowl back in front of the camera.
@@ -229,21 +263,24 @@ export function recentre(){
   R.camera.quaternion.identity();
 }
 
-function stopCard(){
+function stopFloat(){
   const m = R.mindar;
   removeEventListener('deviceorientation', onOrient);
-  R.devQ = null; R.q0 = null; R.freed = false;
-  if (!m) return;
-  R.mindar = null;
-  try { m.renderer.setAnimationLoop(null); } catch { /* fine */ }
+  R.devQ = null; R.q0 = null;
+  try { m?.renderer.setAnimationLoop(null); } catch { /* fine */ }
+  R.renderer.setAnimationLoop(null);
   if (R.view){ R.scene.add(R.anchor, R.camera); R.view = null; }
-  try { m.stop(); } catch { /* never started */ }
-  try { m.renderer.dispose(); } catch { /* fine */ }
+  if (m){
+    R.mindar = null;
+    try { m.stop(); } catch { /* never started */ }
+    try { m.renderer.dispose(); } catch { /* fine */ }
+  }
   R.container.querySelectorAll('video').forEach((v) => { v.srcObject?.getTracks?.().forEach((t) => t.stop()); v.remove(); });
   [...R.container.children].forEach((el) => { if (el !== R.renderer.domElement) el.remove(); });
   R.renderer.domElement.style.display = '';
   R.camera.quaternion.identity();
   R.video = null; R.light = null;
+  if (R.mode === 'float') R.mode = null;
 }
 
 // ------------------------------------------------------------------ mode: preview (development only)
@@ -261,7 +298,7 @@ function start(){
 
 export function stop(){
   if (R.mode === 'xr'){ const s = R.session; R.mode = null; s?.end().catch(() => {}); cleanupXR(); }
-  if (R.mode === 'card') stopCard();
+  if (R.mode === 'float' || R.mindar) stopFloat();
   R.renderer.setAnimationLoop(null);
   R.container.classList.remove('preview');
   R.mode = null; R.selected = null;
@@ -337,7 +374,7 @@ function step(dt, now = performance.now()){
   const k = R.pop, pop = 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2;
   R.spin.scale.setScalar(Math.max(0.001, pop));
   // card mode: the phone turns, the bowl stays where it is in the room
-  if (R.mode === 'card' && R.freed && R.devQ && R.q0){
+  if (R.mode === 'float' && R.devQ && R.q0){
     _qt.copy(R.q0).invert().multiply(R.devQ);
     R.camera.quaternion.slerp(_qt, 1 - Math.exp(-dt * 20));
     const c = R.camera.quaternion;

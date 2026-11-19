@@ -170,9 +170,10 @@ html:has(body.xr),body.xr,body.xr #ar{background:transparent!important}
 body.xr #ar canvas.stage{visibility:hidden}
 /* "move the bowl" only makes sense when it sits in the room */
 #centreBtn{display:none}
-body.mode-xr #centreBtn,body.mode-card.freed #centreBtn{display:grid}
+body.mode-xr #centreBtn,body.mode-float #centreBtn{display:grid}
 /* card mode: corner frame while the card is out of sight */
-#guide{z-index:9;align-items:center;justify-content:center}
 #ar video{object-fit:cover}
 .badge .stamp{display:grid;place-items:center}
 #ar,#ar *{touch-action:none}
+/* the instructions sit over the live camera (and the bowl), like the other NomAR apps */
+#intro.screen.dim{background:rgba(28,18,10,.22);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}

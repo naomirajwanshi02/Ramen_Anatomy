@@ -30,33 +30,51 @@
 <!-- camera + 3D -->
 <div id="ar"></div>
 
-<!-- ============ 1 · WELCOME ============ -->
-<section id="intro" class="screen dim on">
+<!-- ============ 0 · CAMERA PERMISSION ============ -->
+<section id="perm" class="screen dim">
+  <div class="col center">
+    <div class="plate welcome">
+      <span class="corner tl">Fig. 00</span><span class="corner tr">Camera</span>
+      <div class="permicon" aria-hidden="true"><svg viewBox="0 0 48 48" width="56" height="56"><rect x="5" y="13" width="38" height="27" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M17 13l3-5h8l3 5" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="24" cy="26.5" r="7.5" fill="none" stroke="currentColor" stroke-width="3"/></svg></div>
+      <h1>Allow camera access</h1>
+      <p>This page needs your camera. Tap the button, then choose <b>Allow</b>.</p>
+      <p class="small">The video stays on this phone: nothing is recorded or sent anywhere.</p>
+      <button class="btn red" id="permBtn" disabled>Allow camera</button>
+      <div class="status dark" id="permStatus">Cooking the ramen…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1 · VIEWFINDER: find the card ============ -->
+<div id="guide" class="overlay">
+  <div class="scan-top plate"><b>Point your camera at the ramen card</b><span class="cap">The bowl appears as soon as it's found</span></div>
+  <div class="frame"><i></i><i></i><i></i><i></i><div class="sweep"></div></div>
+  <div class="scan-bottom">
+    <div class="status" id="scanStatus">Starting camera…</div>
+    <div class="row"><button class="btn ghost small" id="scanRetry" hidden>Try again</button></div>
+  </div>
+</div>
+
+<!-- ============ 2 · INSTRUCTIONS ============ -->
+<section id="intro" class="screen dim">
   <div class="col center">
     <div class="plate welcome">
       <span class="corner tl">Fig. 01</span><span class="corner tr">Anatomy of ramen</span>
-      <div class="hero-wrap"><img class="hero-bowl" id="introBowl" alt=""><div class="carving on" id="cooking"><span></span>Cooking the ramen…</div></div>
+      <div class="hero-wrap"><img class="hero-bowl" id="introBowl" alt=""></div>
       <h1>Take apart a bowl of ramen!</h1>
       <p>At its core, ramen has <b>five elements</b>: broth, noodles, tare, oil and toppings. Each one has its own job, and none of them works alone.</p>
       <ol class="steps">
-        <li><b>1</b><span>Let us use your <b>camera</b></span></li>
-        <li><b>2</b><span id="stepPlace">Scan the <b>ramen card</b> once</span></li>
-        <li><b>3</b><span><b>Tap the bowl</b>, then <b>walk round</b> it</span></li>
-        <li><b>4</b><span>Tap any <b>piece</b> to learn about it</span></li>
+        <li><b>1</b><span id="stepPlace"><b>Tap the bowl</b> to explode it</span></li>
+        <li><b>2</b><span>Tap any <b>piece</b> to learn about it</span></li>
+        <li><b>3</b><span><b>Pinch</b> or <b>+ −</b> to zoom in and out</span></li>
+        <li><b>4</b><span id="stepMove"><b>Drag</b> to turn it round</span></li>
       </ol>
-      <p class="small" id="camNote"></p>
-      <button class="btn red" id="goBtn" disabled>Start AR</button>
+      <button class="btn red" id="goBtn">Start</button>
       <div class="status dark" id="camStatus"></div>
       <span class="corner bl">ages 8–15</span><span class="corner br">12 parts</span>
     </div>
   </div>
 </section>
-
-<!-- ============ card mode: find the card ============ -->
-<div id="guide" class="overlay">
-  <div class="frame"><i></i><i></i><i></i><i></i><div class="sweep"></div></div>
-</div>
-
 
 <!-- ============ 2 · THE BOWL ============ -->
 <div id="hud" class="overlay">

@@ -1,9 +1,12 @@
-// Anatomy of Ramen: start the camera → the bowl appears (Android: set down on a
-// table you tap, walk round it; iPhone: scan the ramen card once, then it floats free) → tap it and it
-// explodes into its parts → tap a part for one line about it.
+// Anatomy of Ramen, in the same order as the other NomAR apps:
+//   0 · allow the camera → 1 · scan the ramen card (once) → 2 · instructions → Start
+//   → tap the bowl and it explodes into its parts → tap a part for one line about it.
+// After the scan the card is never needed again. On iPhone the bowl floats over the
+// camera (the motion sensor holds it still in the room); on Android, Start sets it
+// down on a table with room tracking (WebXR) so you can walk round it.
 //
 // ?preview=1  development only: no camera, a lit backdrop
-// ?card=1     use the card even where WebXR works
+// ?card=1     float over the camera even where room tracking works
 // ?apart=1    open already exploded      ?part=<id>  open with that part picked
 
 import { PARTS, BY_ID, BOWL_INFO } from './data.js';
@@ -11,7 +14,7 @@ import * as Stage from './stage.js';
 
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const S = { phase: 'intro', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false, freed: false };
+const S = { phase: 'perm', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false };
 
 const overlay = (id, on) => $(id).classList.toggle('on', on);
 const show = (id) => document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id));
@@ -21,7 +24,7 @@ function toast(html, ms = 3200){
   t.innerHTML = html; t.classList.add('on');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms);
 }
-const buzz = (ms) => { try { navigator.vibrate?.(ms); } catch { /* no vibration */ } };
+const buzz = (ms) => { try { if (navigator.userActivation?.hasBeenActive !== false) navigator.vibrate?.(ms); } catch { /* none */ } };
 function fail(err){
   console.error(err);
   $('errText').textContent = String(err?.stack || err?.message || err);
@@ -30,61 +33,108 @@ function fail(err){
 
 // ------------------------------------------------------------ build the ramen (once)
 let thumbs = {};
-await new Promise((ok) => setTimeout(ok, 60)); // let the "cooking" plate paint first
+show('perm');
+await new Promise((ok) => setTimeout(ok, 60)); // let the first plate paint
 try {
-  thumbs = Stage.init($('ar'), { onTap, onEnd: back, onPlacing, onCard, onFound, band });
+  thumbs = Stage.init($('ar'), { onTap, onEnd, onPlacing, onFound, band });
 } catch (e) { fail(e); }
 $('introBowl').src = thumbs.whole || '';
-$('cooking').classList.remove('on');
 buildTray();
-
-// Which anchor this phone can do: room tracking (WebXR) or the card.
 S.xr = q.get('card') !== '1' && await Stage.xrSupported();
-document.body.classList.toggle('has-xr', S.xr);
-$('stepPlace').innerHTML = S.xr ? 'Tap a <b>table</b> to set the bowl down' : 'Scan the <b>ramen card</b> once';
-$('camNote').innerHTML = S.xr
-  ? 'The bowl appears in your room at real size. The camera stays on this phone: nothing is recorded or sent anywhere.'
-  : 'Scan the <a href="target.png" target="_blank" rel="noopener">ramen card</a> once (printed or on another screen), then put it away: the bowl stays with you. The camera stays on this phone: nothing is recorded or sent anywhere.';
-$('goBtn').disabled = false;
+if (S.xr) $('stepMove').innerHTML = '<b>Walk round</b> it, or <b>drag</b> to turn it';
 
-// ------------------------------------------------------------ 1 · welcome → AR
-function start(){
-  $('goBtn').disabled = true;
-  $('camStatus').textContent = '';
-  if (S.xr){
-    // requestSession must run inside this tap, before anything is awaited
-    Stage.startXR().then(() => enter('xr')).catch((err) => camFail(err, true));
-  } else {
-    $('camStatus').textContent = 'Waiting for you to tap “Allow”…';
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){ camFail({ name: 'Insecure' }); return; }
-    enter('card');
-    Stage.startCard().catch((err) => { back(); camFail(err); });
-  }
+// ------------------------------------------------------------ 0 · camera permission
+async function cameraGranted(){
+  try { return (await navigator.permissions?.query({ name: 'camera' }))?.state === 'granted'; } catch { return false; }
 }
-function camFail(err, xr = false){
-  console.error(err);
-  $('goBtn').disabled = false;
-  if (xr){
-    // fall back to the card on this device
-    S.xr = false; document.body.classList.remove('has-xr');
-    $('stepPlace').innerHTML = 'Scan the <b>ramen card</b> once';
-    $('camStatus').textContent = 'Room tracking did not start here, so the bowl will sit on the ramen card instead. Tap the button again.';
+async function openPerm(){
+  S.phase = 'perm';
+  $('permStatus').textContent = '';
+  if (await cameraGranted()) return openScan();
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){
+    $('permStatus').textContent = 'This browser cannot use the camera here. Open the page over https in Safari or Chrome.';
     return;
   }
-  const msg = String(err?.message || err?.name || err || '');
-  $('camStatus').textContent = err?.name === 'NotAllowedError'
-    ? 'The camera was blocked. Tap the “aA” or lock icon next to the address, allow the camera for this site, then try again.'
-    : err?.name === 'Insecure' ? 'This browser cannot use the camera here. Open the page over https in Safari or Chrome.'
-    : /mind|fetch|404/i.test(msg) ? `Could not load the card data (${msg}).`
-    : 'The camera did not start. Close other apps that use the camera and try again.';
+  $('permBtn').disabled = false;
+  show('perm');
+}
+async function askCamera(){
+  $('permBtn').disabled = true;
+  $('permStatus').textContent = 'Waiting for you to tap “Allow”…';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    stream.getTracks().forEach((t) => t.stop());
+    $('permStatus').textContent = '';
+    openScan();
+  } catch (err) {
+    console.error(err);
+    $('permStatus').textContent = err?.name === 'NotAllowedError'
+      ? 'The camera was blocked. Tap the “aA” or lock icon next to the address, allow the camera for this site, then tap Allow camera again.'
+      : 'The camera did not start. Close other apps that use the camera and try again.';
+  } finally { $('permBtn').disabled = false; }
+}
+
+// ------------------------------------------------------------ 1 · scan the card (once)
+async function openScan(){
+  S.phase = 'scan';
+  show(null); overlay('hud', false); overlay('guide', true);
+  $('scanRetry').hidden = true;
+  $('scanStatus').textContent = 'Starting camera…';
+  try {
+    await Stage.scanCard({ onStatus: (t) => { if (S.phase === 'scan') $('scanStatus').textContent = t; } });
+  } catch (err) {
+    console.error(err);
+    const msg = String(err?.message || err?.name || err || '');
+    $('scanStatus').textContent = /mind|fetch|404/i.test(msg) ? `Could not load the card data (${msg}).`
+      : 'Camera not available. Allow camera access for this site, then tap Try again.';
+    $('scanRetry').hidden = false;
+  }
+}
+// found: the bowl is already floating over the camera; the instructions come up over it
+function onFound(){
+  if (S.phase !== 'scan') return;
+  overlay('guide', false);
+  buzz(40);
+  openIntro();
+}
+
+// ------------------------------------------------------------ 2 · instructions → Start
+function openIntro(){
+  S.phase = 'intro';
+  $('goBtn').disabled = false; $('camStatus').textContent = '';
+  overlay('hud', false);
+  show('intro');
+}
+function start(){
+  $('camStatus').textContent = '';
+  if (S.xr){
+    // room tracking: requestSession must run inside this tap, before anything is awaited
+    $('goBtn').disabled = true;
+    Stage.startXR().then(() => enter('xr')).catch((err) => {
+      console.error(err);
+      S.xr = false;
+      $('stepMove').innerHTML = '<b>Drag</b> to turn it round';
+      $('camStatus').textContent = 'Room tracking did not start here. The bowl will float over the camera instead.';
+      Stage.startFloat().then(() => { $('goBtn').disabled = false; }).catch((e) => { $('goBtn').disabled = false; $('camStatus').textContent = 'The camera did not start. Close other apps that use the camera and try again.'; console.error(e); });
+    });
+    return;
+  }
+  Stage.enableMotion(); // iPhone asks for the motion sensor here, inside the tap
+  if (Stage.mode() !== 'float'){
+    $('goBtn').disabled = true;
+    Stage.startFloat().then(() => enter('float')).catch((e) => { console.error(e); $('goBtn').disabled = false; $('camStatus').textContent = 'The camera did not start. Close other apps that use the camera and try again.'; });
+    return;
+  }
+  Stage.recentre();
+  enter('float');
 }
 
 function enter(mode){
   S.mode = mode; S.phase = 'bowl';
-  $('goBtn').disabled = false; $('camStatus').textContent = '';
+  $('goBtn').disabled = false;
   document.body.classList.toggle('preview', mode === 'preview');
   document.body.classList.toggle('mode-xr', mode === 'xr');
-  document.body.classList.toggle('mode-card', mode === 'card');
+  document.body.classList.toggle('mode-float', mode === 'float');
   show(null);
   overlay('hud', true);
   setApart(false, true);
@@ -102,18 +152,12 @@ function onPlacing(placing, ringSeen){
   if (!placing) toast('The bowl is on the table. <b>Walk round it</b> to see every side.', 3800);
   setHint();
 }
-// card: still looking for it
-function onCard(){
-  if (!S.freed) overlay('guide', S.phase === 'bowl');
-  setHint();
-}
-// card: scanned once, the bowl is free
-function onFound(){
-  S.freed = true;
-  document.body.classList.add('freed');
-  overlay('guide', false);
-  buzz(40);
-  setHint();
+// the room-tracking session ended (system back gesture): back to the instructions
+function onEnd(){
+  if (S.phase !== 'bowl') return;
+  leaveBowl();
+  S.xr = true;
+  openIntro();
 }
 
 // ------------------------------------------------------------ 2 · the bowl
@@ -179,7 +223,6 @@ function setCard(p){
 function setHint(){
   let h;
   if (S.mode === 'xr' && S.placing) h = S.ringSeen ? 'Tap to <b>set the bowl down</b> on the ring' : 'Move your phone slowly over a <b>table</b> until a ring appears';
-  else if (S.mode === 'card' && !S.freed) h = 'Point your camera at the <b>ramen card</b> to unlock the bowl';
   else if (!Stage.isExploded()) h = S.mode === 'xr' ? '<b>Tap the bowl</b> to take it apart. Walk round it to see every side' : '<b>Tap the bowl</b> to take it apart. <b>Drag</b> to turn it round';
   else if (S.part) h = 'Tap another piece, or <b>Put it back together</b>';
   else h = 'Tap any <b>floating piece</b> to learn about it';
@@ -191,7 +234,7 @@ function hintLoop(){
   S.hintTimer = setInterval(() => {
     if (S.phase !== 'bowl') return;
     n++;
-    const busy = (S.mode === 'xr' && S.placing) || (S.mode === 'card' && !S.freed);
+    const busy = S.mode === 'xr' && S.placing;
     if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> or <b>+</b> <b>−</b> to zoom' : '<b>Drag</b> to turn it. <b>Pinch</b> or tap <b>+</b> and <b>−</b> to zoom in and out';
     else setHint();
   }, 7000);
@@ -210,19 +253,25 @@ function band(){
   return bandCache;
 }
 
-function back(){
-  if (S.phase === 'intro') return;
-  S.phase = 'intro';
+// ✕: back to the instructions (the card is not asked for again)
+function leaveBowl(){
   clearInterval(S.hintTimer);
   setApart(false, true);
-  overlay('hud', false); overlay('guide', false);
-  Stage.stop();
-  document.body.classList.remove('preview', 'mode-xr', 'mode-card', 'placing', 'freed');
-  S.mode = null; S.freed = false;
-  show('intro');
+  overlay('hud', false);
+  document.body.classList.remove('preview', 'mode-xr', 'mode-float', 'placing');
+}
+function back(){
+  if (S.phase !== 'bowl') return;
+  const wasXR = S.mode === 'xr';
+  leaveBowl();
+  S.mode = null;
+  if (wasXR) Stage.stop(); // ends the session; Start opens it again
+  openIntro();
 }
 
 // ------------------------------------------------------------ wiring
+$('permBtn').addEventListener('click', askCamera);
+$('scanRetry').addEventListener('click', openScan);
 $('goBtn').addEventListener('click', start);
 $('explodeBtn').addEventListener('click', () => setApart(!Stage.isExploded()));
 $('closeBtn').addEventListener('click', back);
@@ -243,3 +292,4 @@ addEventListener('keydown', (e) => {
 addEventListener('error', (e) => fail(e.error || e.message));
 addEventListener('unhandledrejection', (e) => fail(e.reason));
 if (q.get('preview') === '1'){ Stage.startPreview(); enter('preview'); }
+else openPerm();
