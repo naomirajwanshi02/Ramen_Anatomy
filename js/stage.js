@@ -3,8 +3,8 @@
 //  · 'xr'    Android Chrome (WebXR immersive-ar): the phone tracks the room; a ring
 //            finds the table, a tap sets the bowl down at real size (23 cm).
 //  · first, always: scan the ramen card once (MindAR recognition, mind-ar 1.2.5
-//            + three 0.160.0). Then, iPhone: 'float', the bowl floats over the camera,
-//            held still in the room by the motion sensor; the card is never needed again.
+//            + three 0.160.0). Then, iPhone: 'float', the bowl floats steady over the camera
+//            (no motion sensor, no extra permission); the card is never needed again.
 //  · 'preview' (?preview=1, for development only): no camera, a lit backdrop.
 //
 // In every mode: tap the bowl to take it apart, tap a piece to read about it,

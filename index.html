@@ -34,7 +34,6 @@
 <section id="perm" class="screen dim">
   <div class="col center">
     <div class="plate welcome">
-      <span class="corner tl">Fig. 00</span><span class="corner tr">Camera</span>
       <div class="permicon" aria-hidden="true"><svg viewBox="0 0 48 48" width="56" height="56"><rect x="5" y="13" width="38" height="27" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M17 13l3-5h8l3 5" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="24" cy="26.5" r="7.5" fill="none" stroke="currentColor" stroke-width="3"/></svg></div>
       <h1>Allow camera access</h1>
       <p>This page needs your camera. Tap the button, then choose <b>Allow</b>.</p>
@@ -59,19 +58,17 @@
 <section id="intro" class="screen dim">
   <div class="col center">
     <div class="plate welcome">
-      <span class="corner tl">Fig. 01</span><span class="corner tr">Anatomy of ramen</span>
       <div class="hero-wrap"><img class="hero-bowl" id="introBowl" alt=""></div>
       <h1>Take apart a bowl of ramen!</h1>
       <p>At its core, ramen has <b>five elements</b>: broth, noodles, tare, oil and toppings. Each one has its own job, and none of them works alone.</p>
       <ol class="steps">
         <li><b>1</b><span id="stepPlace"><b>Tap the bowl</b> to explode it</span></li>
         <li><b>2</b><span>Tap any <b>piece</b> to learn about it</span></li>
-        <li><b>3</b><span><b>Pinch</b> or <b>+ −</b> to zoom in and out</span></li>
+        <li><b>3</b><span><b>Pinch</b> to zoom in and out</span></li>
         <li><b>4</b><span id="stepMove"><b>Drag</b> to turn it round</span></li>
       </ol>
       <button class="btn red" id="goBtn">Start</button>
       <div class="status dark" id="camStatus"></div>
-      <span class="corner bl">ages 8–15</span><span class="corner br">12 parts</span>
     </div>
   </div>
 </section>
@@ -81,7 +78,6 @@
   <div class="hud-top">
     <div class="hud-left">
       <div class="plate namecard" id="namecard">
-        <span class="corner tl" id="ncFig">Fig. 00</span><span class="corner tr" id="ncRole">Five elements</span>
         <div class="nc-main"><b id="ncName">A bowl of ramen</b></div>
         <div class="nc-blurb" id="ncBlurb"></div>
       </div>
@@ -89,9 +85,6 @@
     </div>
     <div class="iconcol">
       <button class="iconbtn" id="closeBtn" aria-label="Back to the start"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
-      <button class="iconbtn" id="zoomInBtn" aria-label="Zoom in"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></button>
-      <button class="iconbtn" id="zoomOutBtn" aria-label="Zoom out"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></button>
-      <button class="iconbtn" id="centreBtn" aria-label="Move the bowl somewhere else"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1.8v4M12 18.2v4M1.8 12h4M18.2 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 

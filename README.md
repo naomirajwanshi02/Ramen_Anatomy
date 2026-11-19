@@ -10,8 +10,8 @@ A bowl of shoyu ramen appears over the live camera: on Android it is set down on
 2. **Viewfinder.** Point the camera at the ramen card ([`target.png`](target.png), printed or on another screen). This happens **once**: the card is never asked for again.
 3. **Fig. 01 · Instructions** appear over the live camera, with the bowl already floating behind them. Tap **Start**.
 4. **The bowl.**
-   - **iPhone** (Safari has no room tracking): the bowl floats over the camera. The motion sensor (asked for on the Start tap) keeps it still in the room when you turn the phone, and ⊕ brings it back in front of you.
-   - **Android** (Chrome with ARCore): Start opens room tracking (WebXR). Move over a table until a ring appears and tap to set the bowl down at real size, then walk round it. If room tracking fails, the bowl floats over the camera instead, with no second scan.
+   - **iPhone** (Safari has no room tracking): the bowl floats steady over the camera. No motion-sensor permission is asked for.
+   - **Android** (Chrome with ARCore): Start opens room tracking (WebXR). Move over a table until a ring appears and tap to set the bowl down at real size, then walk round it (to move it, ✕ and Start again). If room tracking fails, the bowl floats over the camera instead, with no second scan.
    - ✕ goes back to the instructions; Start brings the bowl back.
 
 `?card=1` uses the floating bowl on Android too. The card is drawn from the bowl illustration (`assets/ref-bowl.jpg`, the tracking target only) and compiled by `tools/make-target.html?build=1`.
@@ -41,7 +41,7 @@ Noodles, tare and wood ear are single meshes with a **morph target**, so the GPU
 
 - **Tap the bowl** or **Take it apart** to explode it, **Put it back together** to rebuild it
 - **Tap a piece** or a tray chip: its name and one line appear on the card at the top
-- **Zoom in and out** with a pinch or the **+** and **−** buttons (0.25× to 5×)
+- **Zoom in and out** with a pinch (0.25× to 5×)
 - **Walk round it** (Android) or **drag** to turn it
 - Keyboard: Space / Enter explode, ← → step through the parts, Esc rebuild
 

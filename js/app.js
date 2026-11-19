@@ -2,7 +2,7 @@
 //   0 · allow the camera → 1 · scan the ramen card (once) → 2 · instructions → Start
 //   → tap the bowl and it explodes into its parts → tap a part for one line about it.
 // After the scan the card is never needed again. On iPhone the bowl floats over the
-// camera (the motion sensor holds it still in the room); on Android, Start sets it
+// camera, steady in front of you; on Android, Start sets it
 // down on a table with room tracking (WebXR) so you can walk round it.
 //
 // ?preview=1  development only: no camera, a lit backdrop
@@ -119,7 +119,6 @@ function start(){
     });
     return;
   }
-  Stage.enableMotion(); // iPhone asks for the motion sensor here, inside the tap
   if (Stage.mode() !== 'float'){
     $('goBtn').disabled = true;
     Stage.startFloat().then(() => enter('float')).catch((e) => { console.error(e); $('goBtn').disabled = false; $('camStatus').textContent = 'The camera did not start. Close other apps that use the camera and try again.'; });
@@ -213,8 +212,6 @@ function markTray(id, quiet = true){
 }
 
 function setCard(p){
-  $('ncFig').textContent = p ? `Fig. ${String(p.n).padStart(2, '0')}` : 'Fig. 00';
-  $('ncRole').textContent = p ? p.kind : 'Five elements';
   $('ncName').textContent = p ? p.name : BOWL_INFO.name;
   $('ncBlurb').textContent = p ? p.line : BOWL_INFO.blurb;
   $('namecard').classList.remove('pop'); void $('namecard').offsetWidth; $('namecard').classList.add('pop');
@@ -235,7 +232,7 @@ function hintLoop(){
     if (S.phase !== 'bowl') return;
     n++;
     const busy = S.mode === 'xr' && S.placing;
-    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> or <b>+</b> <b>−</b> to zoom' : '<b>Drag</b> to turn it. <b>Pinch</b> or tap <b>+</b> and <b>−</b> to zoom in and out';
+    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> to zoom' : '<b>Drag</b> to turn it, <b>pinch</b> to zoom in and out';
     else setHint();
   }, 7000);
 }
@@ -275,9 +272,6 @@ $('scanRetry').addEventListener('click', openScan);
 $('goBtn').addEventListener('click', start);
 $('explodeBtn').addEventListener('click', () => setApart(!Stage.isExploded()));
 $('closeBtn').addEventListener('click', back);
-$('centreBtn').addEventListener('click', () => { if (S.mode === 'xr') Stage.replace(); else Stage.recentre(); buzz(10); });
-$('zoomInBtn').addEventListener('click', () => { Stage.zoomBy(1.5); buzz(8); });
-$('zoomOutBtn').addEventListener('click', () => { Stage.zoomBy(1 / 1.5); buzz(8); });
 $('errBtn').addEventListener('click', () => location.reload());
 addEventListener('keydown', (e) => {
   if (S.phase !== 'bowl') return;

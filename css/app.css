@@ -177,3 +177,6 @@ body.mode-xr #centreBtn,body.mode-float #centreBtn{display:grid}
 #ar,#ar *{touch-action:none}
 /* the instructions sit over the live camera (and the bowl), like the other NomAR apps */
 #intro.screen.dim{background:rgba(28,18,10,.22);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}
+/* no corner labels in this app: tighten the plates where they used to sit */
+.namecard{padding-top:12px}
+.welcome{padding-top:24px}
