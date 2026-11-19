@@ -24,7 +24,7 @@ const R = {
   renderer: null, scene: null, camera: null, look: null, light: null, video: null,
   ramen: null, anchor: null, spin: null, tilt: null, fit: null,
   u: 0, target: 0, selected: null, t: 0, last: 0,
-  yaw: 0, yawV: 0, zoom: 1, zoomT: 1, idle: 0,
+  rot: new THREE.Quaternion(), angV: new THREE.Vector2(), zoom: 1, zoomT: 1, idle: 0,
   // xr
   session: null, refSpace: null, hitSource: null, reticle: null, placed: null, isPlaced: false, placing: false,
   // card
@@ -116,7 +116,7 @@ function onXRSelect(e){
     R.placed.position.copy(p);
     R.placed.rotation.set(0, Math.atan2(cam.x - p.x, cam.z - p.z), 0); // its front faces you
     R.placed.visible = true;
-    R.isPlaced = true; R.placing = false; R.yaw = 0; R.yawV = 0;
+    R.isPlaced = true; R.placing = false; resetSpin();
     R.reticle.visible = false;
     R.cb.onPlacing?.(false, true);
     return;
@@ -204,7 +204,7 @@ function freeFromCard(){
   R.video = m.video;
   R.light = roomLight(R.cardLook, m.renderer);
   R.mode = 'float';
-  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1; R.pop = 0;
+  R.u = 0; R.target = 0; resetSpin(); R.zoom = R.zoomT = 1; R.pop = 0;
   R.camera.quaternion.identity();
   R.q0 = null;
   onResize();
@@ -227,7 +227,7 @@ export async function startFloat(){
   R.video = video; R.freed = true;
   R.light = roomLight(R.look, R.renderer);
   R.mode = 'float';
-  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1; R.pop = 0;
+  R.u = 0; R.target = 0; resetSpin(); R.zoom = R.zoomT = 1; R.pop = 0;
   R.camera.quaternion.identity(); R.q0 = null;
   onResize();
   R.renderer.setAnimationLoop(frame);
@@ -258,7 +258,7 @@ function onOrient(e){
 
 // Bring the floating bowl back in front of the camera.
 export function recentre(){
-  R.yaw = 0; R.yawV = 0;
+  resetSpin();
   R.q0 = R.devQ ? R.devQ.clone() : null;
   R.camera.quaternion.identity();
 }
@@ -291,7 +291,7 @@ export function startPreview(){
 }
 
 function start(){
-  R.u = 0; R.target = 0; R.yaw = 0; R.yawV = 0; R.zoom = R.zoomT = 1;
+  R.u = 0; R.target = 0; resetSpin(); R.zoom = R.zoomT = 1;
   onResize();
   R.renderer.setAnimationLoop(frame);
 }
@@ -316,7 +316,8 @@ export function zoomBy(f){ R.zoomT = THREE.MathUtils.clamp(R.zoomT * f, ZMIN, ZM
 // ------------------------------------------------------------------ framing (scale per mode)
 function frameFor(u){
   const k = u * u * (3 - 2 * u);
-  if (R.mode === 'xr') return { s: 0.01 * R.zoom, y: 0, tilt: 0, lift: 0 };          // true size, in metres
+  // true size, in metres; lifted so it turns about its own middle but rests on the table
+  if (R.mode === 'xr'){ const s = 0.01 * R.zoom, c = THREE.MathUtils.lerp(5.6, 32, k); return { s, y: -c * s, tilt: 0, lift: c * s }; }
   // card (after the scan) and preview: float in front of the camera, fitted into the free band between the HUD plates
   const cam = R.camera;
   const visH = 2 * DIST * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), visW = visH * cam.aspect;
@@ -340,6 +341,22 @@ function frame(now, xrFrame){
   draw();
 }
 const _qt = new THREE.Quaternion();
+// Trackball: turn the ramen about the screen's up axis (ax) and right axis (ay), whatever
+// way it already faces, so every angle can be reached, upside down included.
+const _up = new THREE.Vector3(), _right = new THREE.Vector3(), _cq = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _dq = new THREE.Quaternion();
+function turnBy(ax, ay){
+  const cam = R.mode === 'xr' ? R.renderer.xr.getCamera() : R.camera;
+  cam.getWorldQuaternion(_cq);
+  _up.set(0, 1, 0).applyQuaternion(_cq);
+  _right.set(1, 0, 0).applyQuaternion(_cq);
+  R.spin.parent.updateMatrixWorld();
+  R.spin.parent.getWorldQuaternion(_pq).invert();
+  _up.applyQuaternion(_pq); _right.applyQuaternion(_pq);
+  if (ax) R.rot.premultiply(_dq.setFromAxisAngle(_up, ax));
+  if (ay) R.rot.premultiply(_dq.setFromAxisAngle(_right, ay));
+  R.rot.normalize();
+}
+function resetSpin(){ R.rot.identity(); R.angV.set(0, 0); }
 function draw(){
   const v = R.view;
   if (v) v.renderer.render(v.scene, R.camera);
@@ -356,11 +373,11 @@ function step(dt, now = performance.now()){
   if (!R.drag.on) R.zoom += (R.zoomT - R.zoom) * (1 - Math.exp(-dt * 10));
 
   if (!R.drag.on){
-    R.yaw += R.yawV * dt; R.yawV *= Math.exp(-dt * 3);
+    if (R.angV.lengthSq() > 1e-6){ turnBy(R.angV.x * dt, R.angV.y * dt); R.angV.multiplyScalar(Math.exp(-dt * 3)); }
     R.idle += dt;
-    if (R.mode === 'preview' && R.idle > 2.5) R.yaw += Math.sin(R.t * 0.5) * 0.12 * dt;
+    if (R.mode === 'preview' && R.idle > 2.5) turnBy(Math.sin(R.t * 0.5) * 0.12 * dt, 0);
   }
-  R.spin.rotation.y = R.yaw;
+  R.spin.quaternion.copy(R.rot);
   const F = frameFor(R.u);
   R.fit.scale.setScalar(F.s);
   R.fit.position.y = F.y;
@@ -368,7 +385,7 @@ function step(dt, now = performance.now()){
   if (R.mode !== 'xr'){
     R.spin.position.y += (F.lift - R.spin.position.y) * (1 - Math.exp(-dt * 6));
     if (!Number.isFinite(R.spin.position.y)) R.spin.position.y = Number.isFinite(F.lift) ? F.lift : 0;
-  } else R.spin.position.y = 0;
+  } else R.spin.position.y = F.lift;
   // after the scan the bowl pops up out of the card, with a little overshoot
   if (R.pop < 1){ R.pop = Math.min(1, R.pop + dt / 0.6); }
   const k = R.pop, pop = 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2;
@@ -390,7 +407,7 @@ function bindPointer(el){
     try { el.setPointerCapture(e.pointerId); } catch { /* fine */ }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     R.idle = 0;
-    if (pts.size === 1){ Object.assign(R.drag, { on: true, moved: 0, t0: performance.now() }); R.yawV = 0; }
+    if (pts.size === 1){ Object.assign(R.drag, { on: true, moved: 0, t0: performance.now() }); R.angV.set(0, 0); }
     if (pts.size === 2){ const [a, b] = [...pts.values()]; R.drag.pinch = Math.hypot(a.x - b.x, a.y - b.y); R.drag.zoom0 = R.zoom; R.drag.moved = 99; }
   });
   el.addEventListener('pointermove', (e) => {
@@ -404,14 +421,15 @@ function bindPointer(el){
     }
     const dx = e.clientX - prev.x;
     R.drag.moved += Math.abs(dx) + Math.abs(e.clientY - prev.y);
-    if (R.drag.moved > 8){ R.yaw += dx * 0.009; R.yawV = dx * 0.009 / 0.016; }
+    // free rotation: sideways spins it, up and down tips it over, diagonals do both
+    if (R.drag.moved > 8){ const dy = e.clientY - prev.y; turnBy(dx * 0.009, dy * 0.009); R.angV.set(dx * 0.009 / 0.016, dy * 0.009 / 0.016); }
   });
   const up = (e) => {
     if (!pts.has(e.pointerId)) return;
     pts.delete(e.pointerId);
     if (pts.size > 0) return;
     R.drag.on = false;
-    R.yawV = THREE.MathUtils.clamp(R.yawV, -4, 4);
+    if (R.angV.length() > 5) R.angV.setLength(5);
     // in XR the session's own "select" does the picking
     if (R.mode !== 'xr' && R.drag.moved <= 8 && performance.now() - R.drag.t0 < 450) R.cb.onTap?.(pickAt(e.clientX, e.clientY));
   };

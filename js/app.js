@@ -41,7 +41,7 @@ try {
 $('introBowl').src = thumbs.whole || '';
 buildTray();
 S.xr = q.get('card') !== '1' && await Stage.xrSupported();
-if (S.xr) $('stepMove').innerHTML = '<b>Walk round</b> it, or <b>drag</b> to turn it';
+if (S.xr) $('stepMove').innerHTML = '<b>Walk round</b> it, or <b>drag</b> to turn it any way';
 
 // ------------------------------------------------------------ 0 · camera permission
 async function cameraGranted(){
@@ -113,7 +113,7 @@ function start(){
     Stage.startXR().then(() => enter('xr')).catch((err) => {
       console.error(err);
       S.xr = false;
-      $('stepMove').innerHTML = '<b>Drag</b> to turn it round';
+      $('stepMove').innerHTML = '<b>Drag</b> to turn it any way';
       $('camStatus').textContent = 'Room tracking did not start here. The bowl will float over the camera instead.';
       Stage.startFloat().then(() => { $('goBtn').disabled = false; }).catch((e) => { $('goBtn').disabled = false; $('camStatus').textContent = 'The camera did not start. Close other apps that use the camera and try again.'; console.error(e); });
     });
@@ -220,7 +220,7 @@ function setCard(p){
 function setHint(){
   let h;
   if (S.mode === 'xr' && S.placing) h = S.ringSeen ? 'Tap to <b>set the bowl down</b> on the ring' : 'Move your phone slowly over a <b>table</b> until a ring appears';
-  else if (!Stage.isExploded()) h = S.mode === 'xr' ? '<b>Tap the bowl</b> to take it apart. Walk round it to see every side' : '<b>Tap the bowl</b> to take it apart. <b>Drag</b> to turn it round';
+  else if (!Stage.isExploded()) h = S.mode === 'xr' ? '<b>Tap the bowl</b> to take it apart. Walk round it to see every side' : '<b>Tap the bowl</b> to take it apart. <b>Drag</b> to turn it any way';
   else if (S.part) h = 'Tap another piece, or <b>Put it back together</b>';
   else h = 'Tap any <b>floating piece</b> to learn about it';
   $('hint').innerHTML = h;
@@ -232,7 +232,7 @@ function hintLoop(){
     if (S.phase !== 'bowl') return;
     n++;
     const busy = S.mode === 'xr' && S.placing;
-    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> to zoom' : '<b>Drag</b> to turn it, <b>pinch</b> to zoom in and out';
+    if (!busy && n % 3 === 2) $('hint').innerHTML = S.mode === 'xr' ? 'Walk round it, <b>drag</b> to turn it, <b>pinch</b> to zoom' : '<b>Drag</b> in any direction to turn it, <b>pinch</b> to zoom';
     else setHint();
   }, 7000);
 }

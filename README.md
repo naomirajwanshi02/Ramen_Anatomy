@@ -42,7 +42,7 @@ Noodles, tare and wood ear are single meshes with a **morph target**, so the GPU
 - **Tap the bowl** or **Take it apart** to explode it, **Put it back together** to rebuild it
 - **Tap a piece** or a tray chip: its name and one line appear on the card at the top
 - **Zoom in and out** with a pinch (0.25× to 5×)
-- **Walk round it** (Android) or **drag** to turn it
+- **Drag in any direction** to turn it to any angle (sideways spins it, up and down tips it over, upside down included); a flick keeps it turning for a moment. On Android you can also walk round it
 - Keyboard: Space / Enter explode, ← → step through the parts, Esc rebuild
 
 ## URL options
