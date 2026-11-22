@@ -169,7 +169,7 @@ function buildTray(){
     b.setAttribute('role', 'option');
     b.dataset.id = p.id;
     b.innerHTML = `<img alt="" ${thumbs[p.id] ? `src="${thumbs[p.id]}"` : ''}><b>${p.name}</b>`;
-    b.addEventListener('click', () => pick(p.id));
+    b.addEventListener('click', () => { if (S.part === p.id) letGo(); else pick(p.id); });
     tray.appendChild(b);
   }
 }
@@ -189,8 +189,12 @@ function onTap(id){
     if (id) setApart(true);
     return;
   }
-  if (id) pick(id);
-  else { S.part = null; Stage.select(null); setCard(null); markTray(null); setHint(); }
+  // as in the Pagoda repo: touch a part to pick it, touch it again or empty space to let go
+  if (id && id !== S.part) pick(id);
+  else letGo();
+}
+function letGo(){
+  S.part = null; Stage.select(null); setCard(null); markTray(null); setHint();
 }
 
 function pick(id, { quiet = false } = {}){
@@ -221,7 +225,7 @@ function setHint(){
   let h;
   if (S.mode === 'xr' && S.placing) h = S.ringSeen ? 'Tap to <b>set the bowl down</b> on the ring' : 'Move your phone slowly over a <b>table</b> until a ring appears';
   else if (!Stage.isExploded()) h = S.mode === 'xr' ? '<b>Tap the bowl</b> to take it apart. Walk round it to see every side' : '<b>Tap the bowl</b> to take it apart. <b>Drag</b> to turn it any way';
-  else if (S.part) h = 'Tap another piece, or <b>Put it back together</b>';
+  else if (S.part) h = 'Touch another piece · touch it again or empty space to let go';
   else h = 'Tap any <b>floating piece</b> to learn about it';
   $('hint').innerHTML = h;
 }

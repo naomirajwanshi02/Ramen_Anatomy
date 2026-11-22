@@ -47,6 +47,7 @@ export function init(container, cb){
   R.look = setupLook(renderer, scene);
 
   R.ramen = buildRamen();
+  ownMaterials();
   R.anchor = new THREE.Group(); R.spin = new THREE.Group(); R.tilt = new THREE.Group(); R.fit = new THREE.Group();
   scene.add(R.anchor); R.anchor.add(R.spin); R.spin.add(R.tilt); R.tilt.add(R.fit); R.fit.add(R.ramen.model);
   R.anchor.position.set(0, 0, -DIST);
@@ -341,6 +342,53 @@ function frame(now, xrFrame){
   draw();
 }
 const _qt = new THREE.Quaternion();
+
+// ------------------------------------------------------------------ highlight (as in the Pagoda repo)
+// The picked part keeps its colour and glows softly; the rest fade toward paper.
+// Each part owns copies of its materials (sharing the textures) so it can fade on its own.
+const PAPER = new THREE.Color('#e9e1d2'), GLOW = new THREE.Color('#ffb070'), _paper = new THREE.Color();
+function ownMaterials(){
+  for (const id in R.ramen.parts){
+    const pt = R.ramen.parts[id], copies = new Map();
+    pt.root.traverse((o) => {
+      if (!o.material) return;
+      const own = (m) => {
+        if (!copies.has(m)){
+          const c = m.clone();
+          c.userData.color0 = c.color.clone();
+          c.userData.emissive0 = c.emissive ? c.emissive.clone().multiplyScalar(c.emissiveIntensity ?? 1) : null;
+          // textured and vertex-coloured materials carry their colour in the map, so the
+          // base colour alone hardly lightens them: they get a stronger paper wash
+          c.userData.wash = c.map || c.vertexColors ? 0.6 : 0.35;
+          copies.set(m, c);
+        }
+        return copies.get(m);
+      };
+      o.material = Array.isArray(o.material) ? o.material.map(own) : own(o.material);
+    });
+    pt.mats = [...copies.values()];
+    pt.fade = 0;
+  }
+}
+function highlight(dt, now){
+  const ease = 1 - Math.exp(-dt * 10), glow = 0.1 + 0.06 * Math.sin(now / 280);
+  for (const id in R.ramen.parts){
+    const pt = R.ramen.parts[id];
+    const f = R.selected && id !== R.selected ? 0.65 : 0;
+    pt.fade += (f - pt.fade) * ease;
+    if (Math.abs(f - pt.fade) < 1e-4) pt.fade = f;
+    const g = id === R.selected ? glow : 0;
+    if (pt.fade === 0 && g === 0 && !pt.lit) continue; // nothing to do while nothing is picked
+    pt.lit = pt.fade > 0 || g > 0;
+    for (const m of pt.mats){
+      m.color.copy(m.userData.color0).lerp(PAPER, pt.fade);
+      if (!m.emissive) continue;
+      _paper.copy(PAPER).multiplyScalar(m.userData.wash);
+      m.emissive.copy(m.userData.emissive0).lerp(_paper, pt.fade).lerp(GLOW, g);
+      m.emissiveIntensity = 1;
+    }
+  }
+}
 // Trackball: turn the ramen about the screen's up axis (ax) and right axis (ay), whatever
 // way it already faces, so every angle can be reached, upside down included.
 const _up = new THREE.Vector3(), _right = new THREE.Vector3(), _cq = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _dq = new THREE.Quaternion();
@@ -369,6 +417,7 @@ function step(dt, now = performance.now()){
     const pt = R.ramen.parts[id];
     pt.focus += ((id === R.selected ? 1 : 0) - pt.focus) * (1 - Math.exp(-dt * 7));
   }
+  highlight(dt, now);
   R.ramen.setExplode(R.u, R.t);
   if (!R.drag.on) R.zoom += (R.zoomT - R.zoom) * (1 - Math.exp(-dt * 10));
 
