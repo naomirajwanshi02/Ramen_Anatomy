@@ -156,7 +156,7 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 
 .nc-blurb{min-height:2.6em}
 .namecard .nc-main b{transition:color .2s}
-.explode{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:12px 22px 12px 18px}
+.explode{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:12px 26px}
 .explode.apart{background:var(--anatomy-hi);box-shadow:0 4px 0 #1c120a,0 8px 18px #3b2a1c40}
 
 /* tray chips: a rendered thumbnail of every part */
