@@ -215,7 +215,13 @@ function freeFromCard(){
 
 // Camera without the scanner, for when room tracking fails after the scan: the bowl
 // floats over a plain camera feed (the card is not needed again).
-export async function startFloat(){
+// one camera request at a time (Start can be tapped while the camera is still coming on)
+let floatStarting = null;
+export function startFloat(){
+  if (!floatStarting) floatStarting = startFloatNow().finally(() => { floatStarting = null; });
+  return floatStarting;
+}
+async function startFloatNow(){
   if (R.mode === 'float') return;
   stop();
   const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });

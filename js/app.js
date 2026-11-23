@@ -37,7 +37,8 @@ function fail(err){
 
 // ------------------------------------------------------------ build the ramen (once)
 let thumbs = {};
-show('perm');
+// nothing is shown while the ramen is built: the camera page appears only if it is needed
+// (opened from the hub, or with the camera already allowed, it never flashes up)
 await new Promise((ok) => setTimeout(ok, 60)); // let the first plate paint
 try {
   thumbs = Stage.init($('ar'), { onTap, onEnd, onPlacing, onFound, band });
@@ -107,9 +108,9 @@ function onFound(){
 // (same site as the hub, so its camera permission carries over); if it cannot, ask first.
 async function openFromHub(){
   S.phase = 'intro';
+  openIntro(); // the instructions straight away; the camera comes on behind them
   try { await Stage.startFloat(); }
-  catch (err){ console.error(err); show('perm'); $('permBtn').disabled = false; return; }
-  openIntro();
+  catch (err){ console.error(err); S.phase = 'perm'; show('perm'); $('permBtn').disabled = false; }
 }
 
 function openIntro(){
