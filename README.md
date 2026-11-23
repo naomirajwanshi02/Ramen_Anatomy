@@ -66,3 +66,9 @@ Then open http://localhost:8126/. The camera needs https (or localhost), so use 
 - `js/stage.js` runs the three anchors (WebXR room, MindAR card, preview), drag, pinch and tap picking, and the tray thumbnails
 - `js/app.js` runs the screens and the UI; `js/data.js` holds the part names and lines; `js/look.js` is the shared lighting
 - `tools/make-target.html` draws and compiles the card; mind-ar 1.2.5 and three 0.160.0 are pinned to match the other NomAR apps
+
+## Opened from Scan to Explore
+
+The [Scan to Explore](https://github.com/naomirajwanshi02/Scan_To_Explore) hub opens this app as `?from=hub` after it has already recognised the ramen picture, so this app **skips its own scan**: the camera comes straight on behind the instructions (same site, so the hub's camera permission carries over). Both "back" crosses (on the instructions, and the round ✕ above the ⓘ button) return to the hub's scanner; opened on its own, they return to this app's scanner.
+
+The info panel has its own small ✕ to hide it, and the ⓘ button shows it again (touching a part also brings it back), as in the Shinto_Shrine repo.

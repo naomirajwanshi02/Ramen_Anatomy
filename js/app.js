@@ -15,6 +15,10 @@ import * as Stage from './stage.js';
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const S = { phase: 'perm', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false };
+// Opened from the Scan to Explore hub (?from=hub): the hub has already recognised the ramen
+// picture, so this app skips its own scan, and every "back" cross returns to the hub's scanner.
+const HUB = 'https://naomirajwanshi02.github.io/Scan_To_Explore/';
+const FROM_HUB = q.get('from') === 'hub' || q.has('demo');
 
 const overlay = (id, on) => $(id).classList.toggle('on', on);
 const show = (id) => document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id));
@@ -65,7 +69,7 @@ async function askCamera(){
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     stream.getTracks().forEach((t) => t.stop());
     $('permStatus').textContent = '';
-    openScan();
+    if (FROM_HUB) openFromHub(); else openScan();
   } catch (err) {
     console.error(err);
     $('permStatus').textContent = err?.name === 'NotAllowedError'
@@ -99,6 +103,15 @@ function onFound(){
 }
 
 // ------------------------------------------------------------ 2 · instructions → Start
+// From the hub: no second scan. The camera comes on behind the instructions straight away
+// (same site as the hub, so its camera permission carries over); if it cannot, ask first.
+async function openFromHub(){
+  S.phase = 'intro';
+  try { await Stage.startFloat(); }
+  catch (err){ console.error(err); show('perm'); $('permBtn').disabled = false; return; }
+  openIntro();
+}
+
 function openIntro(){
   S.phase = 'intro';
   $('goBtn').disabled = false; $('camStatus').textContent = '';
@@ -130,6 +143,7 @@ function start(){
 
 function enter(mode){
   S.mode = mode; S.phase = 'bowl';
+  setInfo(true);
   $('goBtn').disabled = false;
   document.body.classList.toggle('preview', mode === 'preview');
   document.body.classList.toggle('mode-xr', mode === 'xr');
@@ -202,6 +216,7 @@ function pick(id, { quiet = false } = {}){
   S.part = id;
   Stage.select(id);
   setCard(BY_ID[id]);
+  if ($('namecard').hidden) setInfo(true);
   markTray(id, quiet);
   if (!quiet) buzz(12);
   setHint();
@@ -244,7 +259,7 @@ function hintLoop(){
 // the free band between the top plates and the bottom buttons (preview framing only)
 let bandCache = null, bandKey = '';
 function band(){
-  const key = `${innerWidth}x${innerHeight}|${$('ncBlurb').textContent.length}|${$('hint').textContent.length}`;
+  const key = `${innerWidth}x${innerHeight}|${$('ncBlurb').textContent.length}|${$('hint').textContent.length}|${$('namecard').hidden}`;
   if (key !== bandKey){
     bandKey = key;
     const top = Math.max($('namecard').getBoundingClientRect().bottom, $('hint').getBoundingClientRect().bottom) + 8;
@@ -261,13 +276,23 @@ function leaveBowl(){
   overlay('hud', false);
   document.body.classList.remove('preview', 'mode-xr', 'mode-float', 'placing');
 }
-function back(){
-  if (S.phase !== 'bowl') return;
-  const wasXR = S.mode === 'xr';
-  leaveBowl();
-  S.mode = null;
-  if (wasXR) Stage.stop(); // ends the session; Start opens it again
-  openIntro();
+// The crosses (above the i button, and on the instructions) go back to scanning: to the
+// Scan to Explore hub's scanner when this was opened from there, otherwise to this app's own.
+function backToScan(){
+  if (S.phase === 'bowl') leaveBowl();
+  S.mode = null; S.part = null;
+  Stage.stop();
+  if (FROM_HUB){ location.href = HUB; return; }
+  show(null);
+  openScan();
+}
+
+// ------------------------------------------------------------ the information panel
+// its small cross hides it; the i button shows it again (and hides it)
+function setInfo(on){
+  $('namecard').hidden = !on;
+  $('infoBtn').setAttribute('aria-expanded', String(on));
+  if (on){ $('namecard').classList.remove('pop'); void $('namecard').offsetWidth; $('namecard').classList.add('pop'); }
 }
 
 // ------------------------------------------------------------ wiring
@@ -275,7 +300,10 @@ $('permBtn').addEventListener('click', askCamera);
 $('scanRetry').addEventListener('click', openScan);
 $('goBtn').addEventListener('click', start);
 $('explodeBtn').addEventListener('click', () => setApart(!Stage.isExploded()));
-$('closeBtn').addEventListener('click', back);
+$('exitBtn').addEventListener('click', backToScan);
+$('introClose').addEventListener('click', backToScan);
+$('infoBtn').addEventListener('click', () => setInfo($('namecard').hidden));
+$('notesClose').addEventListener('click', () => setInfo(false));
 $('errBtn').addEventListener('click', () => location.reload());
 addEventListener('keydown', (e) => {
   if (S.phase !== 'bowl') return;
@@ -290,4 +318,5 @@ addEventListener('keydown', (e) => {
 addEventListener('error', (e) => fail(e.error || e.message));
 addEventListener('unhandledrejection', (e) => fail(e.reason));
 if (q.get('preview') === '1'){ Stage.startPreview(); enter('preview'); }
+else if (FROM_HUB) openFromHub();
 else openPerm();
