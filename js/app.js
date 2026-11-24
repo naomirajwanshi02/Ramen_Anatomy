@@ -1,8 +1,8 @@
 // Anatomy of Ramen, in the same order as the other NomAR apps:
 //   0 · allow the camera → 1 · scan the ramen card (once) → 2 · instructions → Start
 //   → tap the bowl and it explodes into its parts → tap a part for one line about it.
-// After the scan the card is never needed again. On iPhone the bowl floats over the
-// camera, steady in front of you; on Android, Start sets it
+// After the scan the card is never needed again, and the camera is not asked for again: the
+// bowl floats over the camera, steady in front of you, on every phone. With ?xr=1, Start sets it
 // down on a table with room tracking (WebXR) so you can walk round it.
 //
 // ?preview=1  development only: no camera, a lit backdrop
@@ -45,7 +45,9 @@ try {
 } catch (e) { fail(e); }
 $('introBowl').src = thumbs.whole || '';
 buildTray();
-S.xr = q.get('card') !== '1' && await Stage.xrSupported();
+// Room tracking (WebXR) only on request (?xr=1): on Android it shows Chrome's own camera prompt
+// again after the scan. By default every phone keeps the camera that is already on.
+S.xr = q.get('xr') === '1' && await Stage.xrSupported();
 if (S.xr) $('stepMove').innerHTML = '<b>Walk round</b> it, or <b>drag</b> to turn it any way';
 
 // ------------------------------------------------------------ 0 · camera permission
@@ -110,7 +112,7 @@ async function openFromHub(){
   S.phase = 'intro';
   openIntro(); // the instructions straight away; the camera comes on behind them
   try { await Stage.startFloat(); }
-  catch (err){ console.error(err); S.phase = 'perm'; show('perm'); $('permBtn').disabled = false; }
+  catch (err){ console.error(err); } // no second camera page: the Start tap starts the camera instead
 }
 
 function openIntro(){

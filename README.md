@@ -10,8 +10,8 @@ A bowl of shoyu ramen appears over the live camera: on Android it is set down on
 2. **Viewfinder.** Point the camera at the ramen card ([`target.png`](target.png), printed or on another screen). This happens **once**: the card is never asked for again.
 3. **Fig. 01 · Instructions** appear over the live camera, with the bowl already floating behind them. Tap **Start**.
 4. **The bowl.**
-   - **iPhone** (Safari has no room tracking): the bowl floats steady over the camera. No motion-sensor permission is asked for.
-   - **Android** (Chrome with ARCore): Start opens room tracking (WebXR). Move over a table until a ring appears and tap to set the bowl down at real size, then walk round it (to move it, ✕ and Start again). If room tracking fails, the bowl floats over the camera instead, with no second scan.
+   - **Every phone**: the bowl floats steady over the camera that is already on. No second camera or motion permission is asked for.
+   - **Android**: the same floating bowl, with no second camera prompt. Room tracking (WebXR: set it on a table and walk round it) is opt-in with `?xr=1`, because Chrome shows its own camera prompt for it.
    - ✕ goes back to the instructions; Start brings the bowl back.
 
 `?card=1` uses the floating bowl on Android too. The card is drawn from the bowl illustration (`assets/ref-bowl.jpg`, the tracking target only) and compiled by `tools/make-target.html?build=1`.

@@ -184,12 +184,14 @@ body.mode-xr #centreBtn,body.mode-float #centreBtn{display:grid}
 /* ---- crosses and the i button, as in the Shinto_Shrine repo ---- */
 .namecard[hidden]{display:none}
 /* the information panel's own small cross */
-.namecard .x{position:absolute;top:8px;right:8px;z-index:2;width:28px;height:28px;border:0;border-radius:50%;background:var(--anatomy-shade-2);color:var(--anatomy-strong);display:grid;place-items:center;padding:0;pointer-events:auto}
+.namecard .x{position:absolute;top:8px;right:8px;z-index:2;width:28px;height:28px;border:0;background:none;color:var(--anatomy-strong);display:grid;place-items:center;padding:0;pointer-events:auto}
 .namecard .x:active{transform:scale(.92)}
 .namecard .nc-main,.namecard .nc-blurb{padding-right:30px}
 /* the cross (back to scanning) sits above the i button */
 .iconcol{flex:none;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
-.iconbtn[aria-expanded="false"]{background:var(--anatomy-red);color:#fff8ec}
 /* the cross at the top right of the instructions */
-.welcome .x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border:0;border-radius:50%;background:var(--anatomy-shade-2);color:var(--anatomy-strong);display:grid;place-items:center;padding:0}
+.welcome .x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border:0;background:none;color:var(--anatomy-strong);display:grid;place-items:center;padding:0}
 .welcome .x:active{transform:scale(.92)}
+/* plain crosses (no circle behind them), a touch bigger so they still read */
+.welcome .x svg{width:20px;height:20px}
+.namecard .x svg{width:17px;height:17px}
