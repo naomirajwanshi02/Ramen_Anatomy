@@ -8,7 +8,7 @@
 // onion, tare drops) are instanced and moved one by one.
 
 import * as THREE from 'three';
-import * as TX from './textures.js';
+import * as TX from './textures.js?v=28';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const Q = (x = 0, y = 0, z = 0, order = 'YXZ') => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z, order));

@@ -9,15 +9,15 @@
 // ?card=1     float over the camera even where room tracking works
 // ?apart=1    open already exploded      ?part=<id>  open with that part picked
 
-import { PARTS, BY_ID, BOWL_INFO } from './data.js';
-import * as Stage from './stage.js';
+import { PARTS, BY_ID, BOWL_INFO } from './data.js?v=28';
+import * as Stage from './stage.js?v=28';
 
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const S = { phase: 'perm', part: null, hintTimer: 0, xr: false, mode: null, placing: false, ringSeen: false };
 // Opened from the Scan to Explore hub (?from=hub): the hub has already recognised the ramen
 // picture, so this app skips its own scan, and every "back" cross returns to the hub's scanner.
-const HUB = 'https://naomirajwanshi02.github.io/Scan_To_Explore/';
+const HUB = 'https://naomirajwanshi02.github.io/Scan_To_Explore/?scan=1'; // ?scan=1: straight to the hub's scanner
 const FROM_HUB = q.get('from') === 'hub' || q.has('demo');
 
 const overlay = (id, on) => $(id).classList.toggle('on', on);

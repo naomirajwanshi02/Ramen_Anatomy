@@ -195,3 +195,7 @@ body.mode-xr #centreBtn,body.mode-float #centreBtn{display:grid}
 /* plain crosses (no circle behind them), a touch bigger so they still read */
 .welcome .x svg{width:20px;height:20px}
 .namecard .x svg{width:17px;height:17px}
+/* the exit cross on the main screen: a plain ✕ over the camera, no circle and no shadow */
+.xbtn{width:46px;height:46px;border:0;padding:0;background:none;box-shadow:none;filter:none;color:#fff8ec;display:grid;place-items:center;pointer-events:auto}
+.xbtn svg{filter:none}
+.xbtn:active{transform:scale(.9)}

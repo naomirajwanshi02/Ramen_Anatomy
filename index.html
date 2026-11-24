@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="vendor/anatomy/iso.css">
-<link rel="stylesheet" href="css/anatomy-sepia.css">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/anatomy-sepia.css?v=28">
+<link rel="stylesheet" href="css/app.css?v=28">
 <!-- same pins as the other NomAR apps: mind-ar 1.2.5 needs three 0.160.0 -->
 <script type="importmap">
 {
@@ -86,7 +86,7 @@
       <div class="hint" id="hint" role="status" aria-live="polite"></div>
     </div>
     <div class="iconcol">
-      <button class="iconbtn" id="exitBtn" aria-label="Back to scanning"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+      <button class="xbtn" id="exitBtn" aria-label="Back to scanning"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
       <button class="iconbtn" id="infoBtn" aria-label="Show or hide the information" aria-expanded="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="6.2" r="1.9" fill="currentColor"/><path d="M12 10.5v8" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></button>
     </div>
   </div>
@@ -102,6 +102,6 @@
 <div class="plate toast" id="toast"></div>
 <div class="plate errbox" id="err" hidden><b>Something went wrong</b><pre id="errText"></pre><button class="btn small" id="errBtn">Start over</button></div>
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=28"></script>
 </body>
 </html>

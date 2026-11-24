@@ -11,8 +11,8 @@
 // drag to turn it, pinch to resize it.
 
 import * as THREE from 'three';
-import { buildRamen } from './ramen.js';
-import { setupLook, roomLight } from './look.js';
+import { buildRamen } from './ramen.js?v=28';
+import { setupLook, roomLight } from './look.js?v=28';
 
 const DIST = 60;            // preview: cm in front of the camera
 const ZMIN = 0.25, ZMAX = 5; // how far you can zoom out and in
